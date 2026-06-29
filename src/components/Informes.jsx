@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { LOGO_BASE64 } from '../lib/logoBase64'
 
 function Informes() {
   // Primer día del mes en curso
@@ -28,9 +29,13 @@ function Informes() {
     }).format(valor)
   }
 
-  function formatearFecha(fecha) {
+function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha).toLocaleDateString('es-AR')
+    // Si ya viene con información de hora (timestamp completo), la usamos directo.
+    // Si es solo una fecha pura (AAAA-MM-DD), le agregamos hora local para evitar
+    // el corrimiento de zona horaria al convertir a Date.
+    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
+    return new Date(fechaStr).toLocaleDateString('es-AR')
   }
 
   function nombreTipoPago(tipo) {
@@ -106,7 +111,7 @@ function Informes() {
     return resultado
   }
 
-  async function generarInformeDetallado() {
+async function generarInformeDetallado() {
     const datos = await obtenerDatosInforme()
     if (datos === null) return
     if (datos.length === 0) {
@@ -118,10 +123,13 @@ function Informes() {
     const margenIzq = 14
     let y = 16
 
+    // Logo arriba a la izquierda
+    doc.addImage(LOGO_BASE64, 'JPEG', margenIzq, 8, 16, 15)
+
     doc.setFont('courier', 'bold')
     doc.setFontSize(16)
-    doc.text('Informe de Pedidos - Detallado', margenIzq, y)
-    y += 7
+    doc.text('Informe de Pedidos - Detallado', margenIzq + 22, y)
+    y += 16
 
     doc.setFont('courier', 'normal')
     doc.setFontSize(10)
@@ -138,7 +146,7 @@ function Informes() {
       d.estado,
     ])
 
-    autoTable(doc, {
+autoTable(doc, {
       startY: y,
       margin: { left: margenIzq, right: 14 },
       head: [['Pedido', 'Cliente', 'Fecha', 'Precio Venta', 'Pagos Recibidos', 'Saldo Pendiente', 'Estado']],
@@ -164,6 +172,15 @@ function Informes() {
         6: { cellWidth: 38 },
       },
     })
+
+    // Numeración de páginas en todas las hojas del informe
+    const totalPaginas = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= totalPaginas; i++) {
+      doc.setPage(i)
+      doc.setFontSize(9)
+      doc.setFont('courier', 'normal')
+      doc.text(`Página ${i}/${totalPaginas}`, 282, 200, { align: 'right' })
+    }
 
     doc.save(`Informe_Detallado_${fechaDesde}_a_${fechaHasta}.pdf`)
   }

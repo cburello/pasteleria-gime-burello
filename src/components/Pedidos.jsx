@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { LOGO_BASE64 } from '../lib/logoBase64'
 
 function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
   const [pedidos, setPedidos] = useState([])
@@ -13,11 +14,10 @@ function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
 
-useEffect(() => {
+  useEffect(() => {
     cargarPedidos()
   }, [])
 
-  // Si llega un id de pedido para abrir directamente (ej. desde el Dashboard), lo abrimos
   useEffect(() => {
     async function abrirDesdeId() {
       if (idPedidoAbrir) {
@@ -31,12 +31,12 @@ useEffect(() => {
           setPedidoActual({ ...data })
           setVista('detalle')
         }
-        if (onPedidoAbierto) onPedidoAbierto() // limpia el estado en el padre para no reabrir en loop
+        if (onPedidoAbierto) onPedidoAbierto()
       }
     }
     abrirDesdeId()
   }, [idPedidoAbrir])
-  
+
   function normalizar(texto) {
     return (texto || '')
       .trim()
@@ -53,9 +53,10 @@ useEffect(() => {
     }).format(valor)
   }
 
-  function formatearFecha(fecha) {
+function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha).toLocaleDateString('es-AR')
+    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
+    return new Date(fechaStr).toLocaleDateString('es-AR')
   }
 
   async function cargarPedidos() {
@@ -68,9 +69,33 @@ useEffect(() => {
 
     if (error) {
       setError('Error al cargar los pedidos: ' + error.message)
-    } else {
-      setPedidos(data)
+      setCargando(false)
+      return
     }
+
+    const idsPedidos = (data || []).map((p) => p.id_pedido)
+
+    const { data: detalles } = await supabase
+      .from('detalle_pedido')
+      .select('*')
+      .in('id_pedido', idsPedidos)
+
+    const { data: todosLosPagos } = await supabase
+      .from('pagos')
+      .select('*')
+      .in('id_pedido', idsPedidos)
+
+    const pedidosConTotales = (data || []).map((p) => {
+      const lineasPedido = (detalles || []).filter((d) => d.id_pedido === p.id_pedido)
+      const pagosPedido = (todosLosPagos || []).filter((pg) => pg.id_pedido === p.id_pedido)
+
+      const total = lineasPedido.reduce((acc, l) => acc + parseFloat(l.precio_venta) * parseFloat(l.cantidad), 0)
+      const pagado = pagosPedido.reduce((acc, pg) => acc + parseFloat(pg.importe), 0)
+
+      return { ...p, total, pendiente: total - pagado }
+    })
+
+    setPedidos(pedidosConTotales)
     setCargando(false)
   }
 
@@ -92,7 +117,22 @@ useEffect(() => {
     setVista('detalle')
   }
 
-  async function eliminarPedido(id) {
+async function eliminarPedido(id) {
+    const pedidoAEliminar = pedidos.find((p) => p.id_pedido === id)
+    if (pedidoAEliminar) {
+      const periodoPedido = pedidoAEliminar.fecha_pedido.slice(0, 7) + '-01'
+      const { data: resultadoExistente } = await supabase
+        .from('resultados')
+        .select('id_resultado')
+        .eq('periodo', periodoPedido)
+        .limit(1)
+
+      if (resultadoExistente && resultadoExistente.length > 0) {
+        alert('No se puede eliminar este pedido: el período correspondiente a su fecha de pedido ya fue cerrado en Resultados.')
+        return
+      }
+    }
+
     const confirmar = window.confirm('¿Seguro que querés eliminar este pedido? También se eliminarán sus líneas y pagos.')
     if (!confirmar) return
 
@@ -159,13 +199,15 @@ useEffect(() => {
               <th>Cliente</th>
               <th>Fecha pedido</th>
               <th>Fecha entrega</th>
+              <th>Total</th>
+              <th>Pendiente</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {pedidosFiltrados.length === 0 && (
               <tr>
-                <td colSpan="5">No hay pedidos registrados.</td>
+                <td colSpan="7">No hay pedidos registrados.</td>
               </tr>
             )}
             {pedidosFiltrados.map((p) => (
@@ -174,6 +216,10 @@ useEffect(() => {
                 <td>{nombreCliente(p)}</td>
                 <td>{formatearFecha(p.fecha_pedido)}</td>
                 <td>{formatearFecha(p.fecha_entrega)}</td>
+                <td>${formatearMoneda(p.total)}</td>
+                <td style={{ color: p.pendiente > 0.01 ? '#C0392B' : '#2D6A35', fontWeight: 600 }}>
+                  ${formatearMoneda(p.pendiente)}
+                </td>
                 <td>
                   <button className="btn-link" onClick={() => abrirPedido(p)}>
                     Ver / Editar
@@ -191,11 +237,7 @@ useEffect(() => {
   )
 }
 
-// ============================================================
-// SUBCOMPONENTE: Detalle de pedido (cabecera + líneas + pagos)
-// ============================================================
 function DetallePedido({ pedido, onVolver }) {
-  // ---------- Cabecera ----------
   const [clientes, setClientes] = useState([])
   const [textoBuscarCliente, setTextoBuscarCliente] = useState('')
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
@@ -208,7 +250,6 @@ function DetallePedido({ pedido, onVolver }) {
   const [fechaEntrega, setFechaEntrega] = useState(pedido.fecha_entrega?.slice(0, 10) || '')
   const [guardandoCabecera, setGuardandoCabecera] = useState(false)
 
-  // ---------- Detalle (líneas) ----------
   const [lineas, setLineas] = useState([])
   const [cargandoLineas, setCargandoLineas] = useState(true)
 
@@ -222,7 +263,6 @@ function DetallePedido({ pedido, onVolver }) {
   const [precioVentaItem, setPrecioVentaItem] = useState('')
   const [buscandoPrecio, setBuscandoPrecio] = useState(false)
 
-  // ---------- Pagos ----------
   const [pagos, setPagos] = useState([])
   const [cargandoPagos, setCargandoPagos] = useState(true)
   const [tipoPago, setTipoPago] = useState('SE')
@@ -260,12 +300,12 @@ function DetallePedido({ pedido, onVolver }) {
     }).format(valor)
   }
 
-  function formatearFecha(fecha) {
+function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha).toLocaleDateString('es-AR')
+    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
+    return new Date(fechaStr).toLocaleDateString('es-AR')
   }
 
-  // ---------- Carga de datos auxiliares ----------
   async function cargarClientes() {
     const { data } = await supabase.from('clientes').select('*')
     setClientes(data || [])
@@ -297,7 +337,6 @@ function DetallePedido({ pedido, onVolver }) {
     }
   }
 
-  // ---------- Lógica de cliente ----------
   function clienteEsAnonimo(cliente) {
     return cliente?.cliente_anonimo === 'S'
   }
@@ -326,7 +365,6 @@ function DetallePedido({ pedido, onVolver }) {
     }
   }
 
-  // Busca un cliente anónimo genérico existente, o lo crea si no hay ninguno
   async function obtenerOcrearClienteAnonimoGenerico() {
     const { data: existentes } = await supabase
       .from('clientes')
@@ -352,10 +390,23 @@ function DetallePedido({ pedido, onVolver }) {
     return nuevo.id_cliente
   }
 
-  // ---------- Guardar cabecera ----------
-  async function guardarCabecera() {
+async function guardarCabecera() {
     if (!fechaEntrega) {
       alert('La fecha de entrega es obligatoria')
+      return null
+    }
+
+    // Verificamos si la fecha_pedido cae en un período ya cerrado (sin importar medio de pago,
+    // ya que el pedido en sí no tiene uno propio — chequeamos contra cualquier medio de pago cerrado ese mes)
+    const periodoPedido = fechaPedido.slice(0, 7) + '-01'
+    const { data: resultadoExistente } = await supabase
+      .from('resultados')
+      .select('id_resultado')
+      .eq('periodo', periodoPedido)
+      .limit(1)
+
+    if (resultadoExistente && resultadoExistente.length > 0) {
+      alert('No se puede guardar este pedido: el período correspondiente a su fecha de pedido ya fue cerrado en Resultados.')
       return null
     }
 
@@ -426,7 +477,6 @@ function DetallePedido({ pedido, onVolver }) {
     }
   }
 
-  // ---------- Lógica de líneas (detalle_pedido) ----------
   async function cargarLineas() {
     setCargandoLineas(true)
     const { data, error } = await supabase
@@ -579,7 +629,6 @@ function DetallePedido({ pedido, onVolver }) {
     return linea.productos?.descripcion || linea.combos?.descripcion || '—'
   }
 
-  // ---------- Lógica de pagos ----------
   async function cargarPagos() {
     setCargandoPagos(true)
     const { data, error } = await supabase
@@ -603,9 +652,38 @@ function DetallePedido({ pedido, onVolver }) {
     }
   }
 
+  async function periodoEstaCerrado(fechaStr, descripcionMedioPago) {
+    const periodo = fechaStr.slice(0, 7) + '-01'
+
+    const { data: medioPagoData } = await supabase
+      .from('medios_pagos')
+      .select('id_medio_pago')
+      .eq('descripcion', descripcionMedioPago)
+      .limit(1)
+
+    if (!medioPagoData || medioPagoData.length === 0) return false
+
+    const { data, error } = await supabase
+      .from('resultados')
+      .select('id_resultado')
+      .eq('periodo', periodo)
+      .eq('id_medio_pago', medioPagoData[0].id_medio_pago)
+      .limit(1)
+
+    if (error) return false
+    return data && data.length > 0
+  }
+
   async function agregarPago() {
     if (!pedido.id_pedido) {
       alert('Primero guardá los datos generales del pedido')
+      return
+    }
+
+    const fechaHoy = new Date().toISOString().slice(0, 10)
+    const cerrado = await periodoEstaCerrado(fechaHoy, medioPago)
+    if (cerrado) {
+      alert('No se puede registrar este pago porque el período correspondiente ya fue cerrado en Resultados.')
       return
     }
 
@@ -656,6 +734,15 @@ function DetallePedido({ pedido, onVolver }) {
   }
 
   async function eliminarPago(secuencia) {
+    const pago = pagos.find((p) => p.secuencia === secuencia)
+    if (pago) {
+      const cerrado = await periodoEstaCerrado(pago.fecha_pago, pago.medio_pago)
+      if (cerrado) {
+        alert('No se puede eliminar este pago porque su período ya fue cerrado en Resultados.')
+        return
+      }
+    }
+
     const confirmar = window.confirm('¿Eliminar este pago?')
     if (!confirmar) return
 
@@ -676,13 +763,11 @@ function DetallePedido({ pedido, onVolver }) {
     return { PT: 'Pago Total', SE: 'Seña', PP: 'Pago Parcial' }[tipo] || tipo
   }
 
-  // ---------- Totales ----------
   const totalPedido = lineas.reduce((acc, l) => acc + parseFloat(l.precio_venta) * parseFloat(l.cantidad), 0)
   const totalPagado = pagos.reduce((acc, p) => acc + parseFloat(p.importe), 0)
   const saldoPendiente = totalPedido - totalPagado
 
-  // ---------- GENERACIÓN DE PDF (Comanda) ----------
-  function generarComanda() {
+function generarComanda() {
     if (lineas.length === 0) {
       alert('Este pedido no tiene productos o combos cargados todavía.')
       return
@@ -691,6 +776,9 @@ function DetallePedido({ pedido, onVolver }) {
     const doc = new jsPDF()
     const margenIzq = 20
     let y = 22
+
+    // Logo arriba a la izquierda
+    doc.addImage(LOGO_BASE64, 'JPEG', margenIzq, 10, 18, 17)
 
     doc.setFont('times', 'bold')
     doc.setFontSize(22)
@@ -744,12 +832,14 @@ function DetallePedido({ pedido, onVolver }) {
       String(l.cantidad),
       l.productos?.descripcion || l.combos?.descripcion || '—',
       l.id_producto ? 'Producto' : 'Combo',
+      `$${formatearMoneda(l.precio_venta)}`,
+      `$${formatearMoneda(parseFloat(l.precio_venta) * parseFloat(l.cantidad))}`,
     ])
 
     autoTable(doc, {
       startY: y,
       margin: { left: margenIzq, right: 20 },
-      head: [['Cantidad', 'Descripción', 'Tipo']],
+      head: [['Cantidad', 'Descripción', 'Tipo', 'Precio Unit.', 'Subtotal']],
       body: filas,
       theme: 'grid',
       styles: {
@@ -767,16 +857,32 @@ function DetallePedido({ pedido, onVolver }) {
         lineColor: [180, 180, 180],
       },
       columnStyles: {
-        0: { cellWidth: 25, halign: 'center' },
-        2: { cellWidth: 30 },
+        0: { cellWidth: 22, halign: 'center' },
+        2: { cellWidth: 26 },
+        3: { cellWidth: 28, halign: 'right' },
+        4: { cellWidth: 28, halign: 'right' },
       },
     })
 
-    const finalY = doc.lastAutoTable.finalY + 10
+    const finalY = doc.lastAutoTable.finalY + 8
 
+    doc.setFont('times', 'bold')
+    doc.setFontSize(13)
+    doc.text(`TOTAL: $${formatearMoneda(totalPedido)}`, margenIzq, finalY)
+
+const finalY2 = finalY + 10
     doc.setFontSize(9)
     doc.setFont('times', 'italic')
-    doc.text('Documento generado a modo de remito interno — sin valores monetarios.', margenIzq, finalY)
+    doc.text('Comanda generada a modo de comprobante interno.', margenIzq, finalY2)
+
+    // Numeración de página (la comanda siempre es 1 página, pero queda preparado por si crece)
+    const totalPaginas = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= totalPaginas; i++) {
+      doc.setPage(i)
+      doc.setFontSize(9)
+      doc.setFont('times', 'normal')
+      doc.text(`Página ${i}/${totalPaginas}`, 190, 287, { align: 'right' })
+    }
 
     const nombreArchivo = `Comanda_${(descripcion || 'Cliente').replace(/\s+/g, '_')}.pdf`
     doc.save(nombreArchivo)
@@ -798,7 +904,6 @@ function DetallePedido({ pedido, onVolver }) {
         </div>
       )}
 
-      {/* ===== CABECERA ===== */}
       <div className="subseccion">
         <h3>Datos del pedido</h3>
         <div className="formulario formulario-costos">
@@ -883,7 +988,6 @@ function DetallePedido({ pedido, onVolver }) {
         </div>
       </div>
 
-      {/* ===== DETALLE (LÍNEAS) ===== */}
       {pedido.id_pedido && (
         <div className="subseccion">
           <h3>Productos / Combos del pedido</h3>
@@ -1003,7 +1107,6 @@ function DetallePedido({ pedido, onVolver }) {
         </div>
       )}
 
-      {/* ===== PAGOS ===== */}
       {pedido.id_pedido && (
         <div className="subseccion">
           <h3>Pagos</h3>

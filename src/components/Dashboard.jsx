@@ -21,7 +21,7 @@ function Dashboard({ onAbrirPedido }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha).toLocaleDateString('es-AR')
+    return new Date(fecha + 'T00:00:00').toLocaleDateString
   }
 
   function nombreCliente(pedido) {
