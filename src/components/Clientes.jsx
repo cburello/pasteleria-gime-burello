@@ -15,7 +15,6 @@ function Clientes() {
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
 
-  // Resultado de "buscar similares"
   const [similaresEncontrados, setSimilaresEncontrados] = useState(null)
   const [yaVerificado, setYaVerificado] = useState(false)
 
@@ -64,7 +63,7 @@ function Clientes() {
     setDomicilio(cliente.domicilio || '')
     setTelefono(cliente.telefono || '')
     setSimilaresEncontrados(null)
-    setYaVerificado(true) // al editar no hace falta re-verificar duplicados
+    setYaVerificado(true)
   }
 
   async function buscarSimilares() {
@@ -110,7 +109,6 @@ function Clientes() {
       : { cliente_anonimo: 'N', descripcion, domicilio, telefono }
 
     if (editandoId) {
-      // No se permite cambiar cliente_anonimo en una edición: lo excluimos del update
       const { cliente_anonimo, ...registroSinAnonimo } = registro
       const { error } = await supabase
         .from('clientes')
@@ -163,7 +161,7 @@ function Clientes() {
           <select
             value={esAnonimo ? 'S' : 'N'}
             onChange={(e) => {
-              if (editandoId) return // no se puede cambiar al editar
+              if (editandoId) return
               setEsAnonimo(e.target.value === 'S')
               setSimilaresEncontrados(null)
               setYaVerificado(false)
@@ -259,42 +257,44 @@ function Clientes() {
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Descripción</th>
-              <th>Domicilio</th>
-              <th>Teléfono</th>
-              <th>Tipo</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {listaAMostrar.length === 0 && (
+        <div className="tabla-wrapper">
+          <table className="tabla">
+            <thead>
               <tr>
-                <td colSpan="6">No se encontraron clientes.</td>
+                <th>ID</th>
+                <th>Descripción</th>
+                <th>Domicilio</th>
+                <th>Teléfono</th>
+                <th>Tipo</th>
+                <th>Acciones</th>
               </tr>
-            )}
-            {listaAMostrar.map((c) => (
-              <tr key={c.id_cliente} className={similaresEncontrados !== null ? 'fila-destacada' : ''}>
-                <td>{c.id_cliente}</td>
-                <td>{descripcionVisible(c)}</td>
-                <td>{c.domicilio || '—'}</td>
-                <td>{c.telefono || '—'}</td>
-                <td>{c.cliente_anonimo === 'S' ? 'Anónimo' : 'Identificado'}</td>
-                <td>
-                  <button className="btn-link" onClick={() => iniciarEdicion(c)}>
-                    Editar
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminar(c.id_cliente)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {listaAMostrar.length === 0 && (
+                <tr>
+                  <td colSpan="6">No se encontraron clientes.</td>
+                </tr>
+              )}
+              {listaAMostrar.map((c) => (
+                <tr key={c.id_cliente} className={similaresEncontrados !== null ? 'fila-destacada' : ''}>
+                  <td>{c.id_cliente}</td>
+                  <td>{descripcionVisible(c)}</td>
+                  <td>{c.domicilio || '—'}</td>
+                  <td>{c.telefono || '—'}</td>
+                  <td>{c.cliente_anonimo === 'S' ? 'Anónimo' : 'Identificado'}</td>
+                  <td>
+                    <button className="btn-link" onClick={() => iniciarEdicion(c)}>
+                      Editar
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminar(c.id_cliente)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

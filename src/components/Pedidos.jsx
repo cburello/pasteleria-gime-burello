@@ -53,7 +53,7 @@ function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
     }).format(valor)
   }
 
-function formatearFecha(fecha) {
+  function formatearFecha(fecha) {
     if (!fecha) return ''
     const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
     return new Date(fechaStr).toLocaleDateString('es-AR')
@@ -117,7 +117,7 @@ function formatearFecha(fecha) {
     setVista('detalle')
   }
 
-async function eliminarPedido(id) {
+  async function eliminarPedido(id) {
     const pedidoAEliminar = pedidos.find((p) => p.id_pedido === id)
     if (pedidoAEliminar) {
       const periodoPedido = pedidoAEliminar.fecha_pedido.slice(0, 7) + '-01'
@@ -192,46 +192,48 @@ async function eliminarPedido(id) {
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Cliente</th>
-              <th>Fecha pedido</th>
-              <th>Fecha entrega</th>
-              <th>Total</th>
-              <th>Pendiente</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pedidosFiltrados.length === 0 && (
+        <div className="tabla-wrapper">
+          <table className="tabla">
+            <thead>
               <tr>
-                <td colSpan="7">No hay pedidos registrados.</td>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Fecha pedido</th>
+                <th>Fecha entrega</th>
+                <th>Total</th>
+                <th>Pendiente</th>
+                <th>Acciones</th>
               </tr>
-            )}
-            {pedidosFiltrados.map((p) => (
-              <tr key={p.id_pedido}>
-                <td>{p.id_pedido}</td>
-                <td>{nombreCliente(p)}</td>
-                <td>{formatearFecha(p.fecha_pedido)}</td>
-                <td>{formatearFecha(p.fecha_entrega)}</td>
-                <td>${formatearMoneda(p.total)}</td>
-                <td style={{ color: p.pendiente > 0.01 ? '#C0392B' : '#2D6A35', fontWeight: 600 }}>
-                  ${formatearMoneda(p.pendiente)}
-                </td>
-                <td>
-                  <button className="btn-link" onClick={() => abrirPedido(p)}>
-                    Ver / Editar
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminarPedido(p.id_pedido)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pedidosFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan="7">No hay pedidos registrados.</td>
+                </tr>
+              )}
+              {pedidosFiltrados.map((p) => (
+                <tr key={p.id_pedido}>
+                  <td>{p.id_pedido}</td>
+                  <td>{nombreCliente(p)}</td>
+                  <td>{formatearFecha(p.fecha_pedido)}</td>
+                  <td>{formatearFecha(p.fecha_entrega)}</td>
+                  <td>${formatearMoneda(p.total)}</td>
+                  <td style={{ color: p.pendiente > 0.01 ? '#C0392B' : '#2D6A35', fontWeight: 600 }}>
+                    ${formatearMoneda(p.pendiente)}
+                  </td>
+                  <td>
+                    <button className="btn-link" onClick={() => abrirPedido(p)}>
+                      Ver / Editar
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminarPedido(p.id_pedido)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
@@ -300,7 +302,7 @@ function DetallePedido({ pedido, onVolver }) {
     }).format(valor)
   }
 
-function formatearFecha(fecha) {
+  function formatearFecha(fecha) {
     if (!fecha) return ''
     const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
     return new Date(fechaStr).toLocaleDateString('es-AR')
@@ -390,14 +392,12 @@ function formatearFecha(fecha) {
     return nuevo.id_cliente
   }
 
-async function guardarCabecera() {
+  async function guardarCabecera() {
     if (!fechaEntrega) {
       alert('La fecha de entrega es obligatoria')
       return null
     }
 
-    // Verificamos si la fecha_pedido cae en un período ya cerrado (sin importar medio de pago,
-    // ya que el pedido en sí no tiene uno propio — chequeamos contra cualquier medio de pago cerrado ese mes)
     const periodoPedido = fechaPedido.slice(0, 7) + '-01'
     const { data: resultadoExistente } = await supabase
       .from('resultados')
@@ -767,7 +767,7 @@ async function guardarCabecera() {
   const totalPagado = pagos.reduce((acc, p) => acc + parseFloat(p.importe), 0)
   const saldoPendiente = totalPedido - totalPagado
 
-function generarComanda() {
+  function generarComanda() {
     if (lineas.length === 0) {
       alert('Este pedido no tiene productos o combos cargados todavía.')
       return
@@ -777,7 +777,6 @@ function generarComanda() {
     const margenIzq = 20
     let y = 22
 
-    // Logo arriba a la izquierda
     doc.addImage(LOGO_BASE64, 'JPEG', margenIzq, 10, 18, 17)
 
     doc.setFont('times', 'bold')
@@ -870,12 +869,11 @@ function generarComanda() {
     doc.setFontSize(13)
     doc.text(`TOTAL: $${formatearMoneda(totalPedido)}`, margenIzq, finalY)
 
-const finalY2 = finalY + 10
+    const finalY2 = finalY + 10
     doc.setFontSize(9)
     doc.setFont('times', 'italic')
     doc.text('Comanda generada a modo de comprobante interno.', margenIzq, finalY2)
 
-    // Numeración de página (la comanda siempre es 1 página, pero queda preparado por si crece)
     const totalPaginas = doc.internal.getNumberOfPages()
     for (let i = 1; i <= totalPaginas; i++) {
       doc.setPage(i)
@@ -1064,41 +1062,43 @@ const finalY2 = finalY + 10
           {cargandoLineas && <p>Cargando líneas del pedido...</p>}
 
           {!cargandoLineas && (
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Tipo</th>
-                  <th>Descripción</th>
-                  <th>Cantidad</th>
-                  <th>Precio real</th>
-                  <th>Precio venta</th>
-                  <th>Subtotal</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lineas.length === 0 && (
+            <div className="tabla-wrapper">
+              <table className="tabla">
+                <thead>
                   <tr>
-                    <td colSpan="7">Todavía no agregaste productos o combos.</td>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Precio real</th>
+                    <th>Precio venta</th>
+                    <th>Subtotal</th>
+                    <th>Acciones</th>
                   </tr>
-                )}
-                {lineas.map((l) => (
-                  <tr key={l.secuencia}>
-                    <td>{l.id_producto ? 'Producto' : 'Combo'}</td>
-                    <td>{descripcionLinea(l)}</td>
-                    <td>{l.cantidad}</td>
-                    <td>${formatearMoneda(l.precio_real)}</td>
-                    <td>${formatearMoneda(l.precio_venta)}</td>
-                    <td>${formatearMoneda(parseFloat(l.precio_venta) * parseFloat(l.cantidad))}</td>
-                    <td>
-                      <button className="btn-link btn-eliminar" onClick={() => quitarLinea(l.secuencia)}>
-                        Quitar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {lineas.length === 0 && (
+                    <tr>
+                      <td colSpan="7">Todavía no agregaste productos o combos.</td>
+                    </tr>
+                  )}
+                  {lineas.map((l) => (
+                    <tr key={l.secuencia}>
+                      <td>{l.id_producto ? 'Producto' : 'Combo'}</td>
+                      <td>{descripcionLinea(l)}</td>
+                      <td>{l.cantidad}</td>
+                      <td>${formatearMoneda(l.precio_real)}</td>
+                      <td>${formatearMoneda(l.precio_venta)}</td>
+                      <td>${formatearMoneda(parseFloat(l.precio_venta) * parseFloat(l.cantidad))}</td>
+                      <td>
+                        <button className="btn-link btn-eliminar" onClick={() => quitarLinea(l.secuencia)}>
+                          Quitar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
           <div className="costo-total">
@@ -1154,37 +1154,39 @@ const finalY2 = finalY + 10
           {cargandoPagos && <p>Cargando pagos...</p>}
 
           {!cargandoPagos && (
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tipo</th>
-                  <th>Importe</th>
-                  <th>Medio de pago</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagos.length === 0 && (
+            <div className="tabla-wrapper">
+              <table className="tabla">
+                <thead>
                   <tr>
-                    <td colSpan="5">No hay pagos registrados.</td>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Importe</th>
+                    <th>Medio de pago</th>
+                    <th>Acciones</th>
                   </tr>
-                )}
-                {pagos.map((p) => (
-                  <tr key={p.secuencia}>
-                    <td>{formatearFecha(p.fecha_pago)}</td>
-                    <td>{nombreTipoPago(p.tipo)}</td>
-                    <td>${formatearMoneda(p.importe)}</td>
-                    <td>{p.medio_pago}</td>
-                    <td>
-                      <button className="btn-link btn-eliminar" onClick={() => eliminarPago(p.secuencia)}>
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {pagos.length === 0 && (
+                    <tr>
+                      <td colSpan="5">No hay pagos registrados.</td>
+                    </tr>
+                  )}
+                  {pagos.map((p) => (
+                    <tr key={p.secuencia}>
+                      <td>{formatearFecha(p.fecha_pago)}</td>
+                      <td>{nombreTipoPago(p.tipo)}</td>
+                      <td>${formatearMoneda(p.importe)}</td>
+                      <td>{p.medio_pago}</td>
+                      <td>
+                        <button className="btn-link btn-eliminar" onClick={() => eliminarPago(p.secuencia)}>
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
           <div className={saldoPendiente > 0 ? 'aviso-similar' : 'aviso-ok'}>

@@ -37,7 +37,7 @@ function Gastos() {
     }).format(valor)
   }
 
-function formatearFecha(fecha) {
+  function formatearFecha(fecha) {
     if (!fecha) return ''
     return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
   }
@@ -50,7 +50,7 @@ function formatearFecha(fecha) {
       .replace(/[\u0300-\u036f]/g, '')
   }
 
-async function cargarGastos() {
+  async function cargarGastos() {
     setCargando(true)
     setError(null)
     const { data, error } = await supabase
@@ -107,7 +107,7 @@ async function cargarGastos() {
     setObservaciones(gasto.observaciones || '')
   }
 
-// Si la fecha cae en un período cerrado, busca el primer mes ABIERTO disponible y avisa
+  // Si la fecha cae en un período cerrado, busca el primer mes ABIERTO disponible y avisa
   async function ajustarFechaSiCerrada(fechaStr) {
     let fechaActual = fechaStr
     let ajustada = false
@@ -120,7 +120,7 @@ async function cargarGastos() {
         .eq('periodo', periodo)
         .limit(1)
 
-      if (!data || data.length === 0) break // este mes está abierto, paramos acá
+      if (!data || data.length === 0) break
 
       ajustada = true
       const f = new Date(periodo + 'T00:00:00')
@@ -157,7 +157,7 @@ async function cargarGastos() {
 
     setGuardando(true)
 
-const registro = {
+    const registro = {
       id_concepto: parseInt(idConcepto),
       fecha: fechaAjustada,
       importe: parseFloat(importe),
@@ -307,44 +307,46 @@ const registro = {
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Concepto</th>
-              <th>Importe</th>
-              <th>Medio de pago</th>
-              <th>Proveedor</th>
-              <th>Comprobante</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {gastosFiltrados.length === 0 && (
+        <div className="tabla-wrapper">
+          <table className="tabla">
+            <thead>
               <tr>
-                <td colSpan="7">No hay gastos registrados.</td>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th>Importe</th>
+                <th>Medio de pago</th>
+                <th>Proveedor</th>
+                <th>Comprobante</th>
+                <th>Acciones</th>
               </tr>
-            )}
-{gastosFiltrados.map((g) => (
-              <tr key={g.id_gasto}>
-                <td>{formatearFecha(g.fecha)}</td>
-                <td>{g.conceptos?.descripcion}</td>
-                <td>${formatearMoneda(g.importe)}</td>
-                <td>{g.medios_pagos?.descripcion || g.id_medio_pago}</td>
-                <td>{g.proveedores?.descripcion || '—'}</td>
-                <td>{g.comprobante || '—'}</td>
-                <td>
-                  <button className="btn-link" onClick={() => iniciarEdicion(g)}>
-                    Editar
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminar(g.id_gasto)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {gastosFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan="7">No hay gastos registrados.</td>
+                </tr>
+              )}
+              {gastosFiltrados.map((g) => (
+                <tr key={g.id_gasto}>
+                  <td>{formatearFecha(g.fecha)}</td>
+                  <td>{g.conceptos?.descripcion}</td>
+                  <td>${formatearMoneda(g.importe)}</td>
+                  <td>{g.medios_pagos?.descripcion || g.id_medio_pago}</td>
+                  <td>{g.proveedores?.descripcion || '—'}</td>
+                  <td>{g.comprobante || '—'}</td>
+                  <td>
+                    <button className="btn-link" onClick={() => iniciarEdicion(g)}>
+                      Editar
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminar(g.id_gasto)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {!cargando && !error && gastosFiltrados.length > 0 && (

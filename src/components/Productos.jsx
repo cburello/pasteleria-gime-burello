@@ -112,40 +112,42 @@ function Productos() {
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Descripción</th>
-              <th>Receta</th>
-              <th>Coef. Ganancia</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {productosFiltrados.length === 0 && (
+        <div className="tabla-wrapper">
+          <table className="tabla">
+            <thead>
               <tr>
-                <td colSpan="5">No hay productos registrados.</td>
+                <th>ID</th>
+                <th>Descripción</th>
+                <th>Receta</th>
+                <th>Coef. Ganancia</th>
+                <th>Acciones</th>
               </tr>
-            )}
-            {productosFiltrados.map((p) => (
-              <tr key={p.id_producto}>
-                <td>{p.id_producto}</td>
-                <td>{p.descripcion}</td>
-                <td>{p.recetas?.descripcion || '—'}</td>
-                <td>{p.coeficiente_ganancia}</td>
-                <td>
-                  <button className="btn-link" onClick={() => abrirProducto(p)}>
-                    Ver / Editar
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminarProducto(p.id_producto)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {productosFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan="5">No hay productos registrados.</td>
+                </tr>
+              )}
+              {productosFiltrados.map((p) => (
+                <tr key={p.id_producto}>
+                  <td>{p.id_producto}</td>
+                  <td>{p.descripcion}</td>
+                  <td>{p.recetas?.descripcion || '—'}</td>
+                  <td>{p.coeficiente_ganancia}</td>
+                  <td>
+                    <button className="btn-link" onClick={() => abrirProducto(p)}>
+                      Ver / Editar
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminarProducto(p.id_producto)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
@@ -170,7 +172,6 @@ function DetalleProducto({ producto, onVolver }) {
   const [precios, setPrecios] = useState([])
   const [cargandoPrecios, setCargandoPrecios] = useState(true)
 
-  // Formulario de nuevo precio
   const [fechaInicioPrecio, setFechaInicioPrecio] = useState(new Date().toISOString().slice(0, 10))
   const [fechaFinPrecio, setFechaFinPrecio] = useState('3000-12-31')
   const [precioVentaManual, setPrecioVentaManual] = useState('')
@@ -202,7 +203,8 @@ function DetalleProducto({ producto, onVolver }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha + 'T00:00:00').toLocaleDateString
+    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
+    return new Date(fechaStr).toLocaleDateString('es-AR')
   }
 
   function formatearMoneda(valor) {
@@ -247,7 +249,6 @@ function DetalleProducto({ producto, onVolver }) {
     return data[0]
   }
 
-  // Calcula el costo actual de una receta (suma de ingredientes x costo vigente)
   async function calcularCostoDeReceta(idRecetaCalculo) {
     setCalculandoCosto(true)
 
@@ -288,13 +289,11 @@ function DetalleProducto({ producto, onVolver }) {
     setTextoBuscarReceta(receta.descripcion)
   }
 
-  // Costo por unidad de producto final, según la receta
   const costoPorUnidad =
     costoReceta !== null && recetaSeleccionada?.cantidad_producto_final
       ? costoReceta / recetaSeleccionada.cantidad_producto_final
       : null
 
-  // Precio teórico simulado en tiempo real
   const precioTeoricoSimulado =
     costoPorUnidad !== null ? costoPorUnidad * parseFloat(coeficiente || 0) : null
 
@@ -374,7 +373,6 @@ function DetalleProducto({ producto, onVolver }) {
     return f.toISOString().slice(0, 10)
   }
 
-  // Al iniciar la carga de un nuevo precio, precargamos el campo manual con el valor simulado
   function iniciarNuevoPrecio() {
     setEditandoPrecioId(null)
     setFechaInicioPrecio(new Date().toISOString().slice(0, 10))
@@ -474,7 +472,6 @@ function DetalleProducto({ producto, onVolver }) {
     }
   }
 
-  // Precio vigente hoy, para comparar con el teórico actual y mostrar alerta
   const hoy = new Date().toISOString().slice(0, 10)
   const precioVigenteHoy = precios.find(
     (p) => p.fecha_inicio <= hoy && p.fecha_fin >= hoy
@@ -493,7 +490,6 @@ function DetalleProducto({ producto, onVolver }) {
 
       <h2>{producto.id_producto ? 'Editar Producto' : 'Nuevo Producto'}</h2>
 
-      {/* Datos generales */}
       <div className="subseccion">
         <h3>Datos generales</h3>
         <div className="formulario formulario-costos">
@@ -549,7 +545,6 @@ function DetalleProducto({ producto, onVolver }) {
         </div>
       </div>
 
-      {/* Simulador de precio */}
       {idReceta && (
         <div className="subseccion">
           <h3>Simulador de precio</h3>
@@ -583,7 +578,6 @@ function DetalleProducto({ producto, onVolver }) {
         </div>
       )}
 
-      {/* Historial de precios */}
       {producto.id_producto && (
         <div className="subseccion">
           <h3>Historial de precios</h3>
@@ -636,40 +630,42 @@ function DetalleProducto({ producto, onVolver }) {
           {cargandoPrecios && <p>Cargando historial...</p>}
 
           {!cargandoPrecios && (
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Desde</th>
-                  <th>Hasta</th>
-                  <th>Precio venta</th>
-                  <th>Precio teórico (al momento)</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {precios.length === 0 && (
+            <div className="tabla-wrapper">
+              <table className="tabla">
+                <thead>
                   <tr>
-                    <td colSpan="5">No hay precios registrados.</td>
+                    <th>Desde</th>
+                    <th>Hasta</th>
+                    <th>Precio venta</th>
+                    <th>Precio teórico (al momento)</th>
+                    <th>Acciones</th>
                   </tr>
-                )}
-                {precios.map((p) => (
-                  <tr key={p.id_precio}>
-                    <td>{formatearFecha(p.fecha_inicio)}</td>
-                    <td>{p.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(p.fecha_fin)}</td>
-<td>${formatearMoneda(p.precio_venta)}</td>
-                    <td>{p.precio_teorico ? `$${formatearMoneda(p.precio_teorico)}` : '—'}</td>
-                    <td>
-                      <button className="btn-link" onClick={() => iniciarEdicionPrecio(p)}>
-                        Editar
-                      </button>
-                      <button className="btn-link btn-eliminar" onClick={() => eliminarPrecio(p.id_precio)}>
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {precios.length === 0 && (
+                    <tr>
+                      <td colSpan="5">No hay precios registrados.</td>
+                    </tr>
+                  )}
+                  {precios.map((p) => (
+                    <tr key={p.id_precio}>
+                      <td>{formatearFecha(p.fecha_inicio)}</td>
+                      <td>{p.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(p.fecha_fin)}</td>
+                      <td>${formatearMoneda(p.precio_venta)}</td>
+                      <td>{p.precio_teorico ? `$${formatearMoneda(p.precio_teorico)}` : '—'}</td>
+                      <td>
+                        <button className="btn-link" onClick={() => iniciarEdicionPrecio(p)}>
+                          Editar
+                        </button>
+                        <button className="btn-link btn-eliminar" onClick={() => eliminarPrecio(p.id_precio)}>
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

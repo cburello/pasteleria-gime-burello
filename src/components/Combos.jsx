@@ -33,7 +33,8 @@ function Combos() {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha + 'T00:00:00').toLocaleDateString    
+    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
+    return new Date(fechaStr).toLocaleDateString('es-AR')
   }
 
   async function cargarCombos() {
@@ -126,43 +127,45 @@ function Combos() {
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Descripción</th>
-              <th>Precio</th>
-              <th>Vigencia</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {combosFiltrados.length === 0 && (
+        <div className="tabla-wrapper">
+          <table className="tabla">
+            <thead>
               <tr>
-                <td colSpan="5">No hay combos registrados.</td>
+                <th>ID</th>
+                <th>Descripción</th>
+                <th>Precio</th>
+                <th>Vigencia</th>
+                <th>Acciones</th>
               </tr>
-            )}
-            {combosFiltrados.map((c) => (
-              <tr key={c.id_combo}>
-                <td>{c.id_combo}</td>
-                <td>{c.descripcion}</td>
-                <td>${formatearMoneda(c.precio)}</td>
-                <td>
-                  {formatearFecha(c.fecha_inicio)} —{' '}
-                  {c.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(c.fecha_fin)}
-                </td>
-                <td>
-                  <button className="btn-link" onClick={() => abrirCombo(c)}>
-                    Ver / Editar
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminarCombo(c.id_combo)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {combosFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan="5">No hay combos registrados.</td>
+                </tr>
+              )}
+              {combosFiltrados.map((c) => (
+                <tr key={c.id_combo}>
+                  <td>{c.id_combo}</td>
+                  <td>{c.descripcion}</td>
+                  <td>${formatearMoneda(c.precio)}</td>
+                  <td>
+                    {formatearFecha(c.fecha_inicio)} —{' '}
+                    {c.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(c.fecha_fin)}
+                  </td>
+                  <td>
+                    <button className="btn-link" onClick={() => abrirCombo(c)}>
+                      Ver / Editar
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminarCombo(c.id_combo)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
@@ -180,7 +183,7 @@ function DetalleCombo({ combo, onVolver }) {
 
   const [combosExistentes, setCombosExistentes] = useState([])
 
-  const [productosCombo, setProductosCombo] = useState([]) // detalle_combo enriquecido con datos de producto
+  const [productosCombo, setProductosCombo] = useState([])
   const [cargandoProductos, setCargandoProductos] = useState(true)
 
   const [productosDisponibles, setProductosDisponibles] = useState([])
@@ -245,7 +248,6 @@ function DetalleCombo({ combo, onVolver }) {
     return data[0]
   }
 
-  // Costo total de una receta (suma de ingredientes x costo vigente)
   async function calcularCostoReceta(idReceta) {
     const { data: detalle, error } = await supabase
       .from('detalle_receta')
@@ -268,7 +270,6 @@ function DetalleCombo({ combo, onVolver }) {
     return total
   }
 
-  // Precio de venta vigente hoy de un producto
   async function obtenerPrecioVigente(idProducto) {
     const hoy = new Date().toISOString().slice(0, 10)
     const { data, error } = await supabase
@@ -284,7 +285,6 @@ function DetalleCombo({ combo, onVolver }) {
     return data[0]
   }
 
-  // Trae todos los datos económicos de un producto: costo receta, precio teórico, precio venta
   async function obtenerDatosEconomicos(producto) {
     const costoReceta = producto.id_receta ? await calcularCostoReceta(producto.id_receta) : null
     const precioVigente = await obtenerPrecioVigente(producto.id_producto)
@@ -405,7 +405,6 @@ function DetalleCombo({ combo, onVolver }) {
     return f.toISOString().slice(0, 10)
   }
 
-  // Suma de precio_venta x cantidad de todos los productos del combo (sugerencia)
   const precioSugerido = productosCombo.reduce((acc, p) => {
     const precioUnitario = p.precio_venta || 0
     return acc + precioUnitario * parseFloat(p.cantidad || 1)
@@ -509,7 +508,6 @@ function DetalleCombo({ combo, onVolver }) {
 
       <h2>{combo.id_combo ? 'Editar Combo' : 'Nuevo Combo'}</h2>
 
-      {/* Datos generales */}
       <div className="subseccion">
         <h3>Datos generales</h3>
         <div className="formulario formulario-costos">
@@ -558,7 +556,6 @@ function DetalleCombo({ combo, onVolver }) {
         </div>
       </div>
 
-      {/* Productos del combo */}
       {combo.id_combo && (
         <div className="subseccion">
           <h3>Productos incluidos</h3>
@@ -600,41 +597,43 @@ function DetalleCombo({ combo, onVolver }) {
           {cargandoProductos && <p>Cargando productos del combo...</p>}
 
           {!cargandoProductos && (
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Cantidad</th>
-                  <th>Costo receta (u.)</th>
-                  <th>Precio teórico</th>
-                  <th>Precio venta</th>
-                  <th>Subtotal</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {productosCombo.length === 0 && (
+            <div className="tabla-wrapper">
+              <table className="tabla">
+                <thead>
                   <tr>
-                    <td colSpan="7">Todavía no agregaste productos a este combo.</td>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Costo receta (u.)</th>
+                    <th>Precio teórico</th>
+                    <th>Precio venta</th>
+                    <th>Subtotal</th>
+                    <th>Acciones</th>
                   </tr>
-                )}
-                {productosCombo.map((pc) => (
-                  <tr key={pc.id_producto}>
-                    <td>{pc.productos?.descripcion}</td>
-                    <td>{pc.cantidad}</td>
-                    <td>${formatearMoneda(pc.costo_receta)}</td>
-                    <td>${formatearMoneda(pc.precio_teorico)}</td>
-                    <td>${formatearMoneda(pc.precio_venta)}</td>
-                    <td>${formatearMoneda((pc.precio_venta || 0) * parseFloat(pc.cantidad))}</td>
-                    <td>
-                      <button className="btn-link btn-eliminar" onClick={() => quitarProducto(pc.id_producto)}>
-                        Quitar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {productosCombo.length === 0 && (
+                    <tr>
+                      <td colSpan="7">Todavía no agregaste productos a este combo.</td>
+                    </tr>
+                  )}
+                  {productosCombo.map((pc) => (
+                    <tr key={pc.id_producto}>
+                      <td>{pc.productos?.descripcion}</td>
+                      <td>{pc.cantidad}</td>
+                      <td>${formatearMoneda(pc.costo_receta)}</td>
+                      <td>${formatearMoneda(pc.precio_teorico)}</td>
+                      <td>${formatearMoneda(pc.precio_venta)}</td>
+                      <td>${formatearMoneda((pc.precio_venta || 0) * parseFloat(pc.cantidad))}</td>
+                      <td>
+                        <button className="btn-link btn-eliminar" onClick={() => quitarProducto(pc.id_producto)}>
+                          Quitar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
           <div className="costo-total">

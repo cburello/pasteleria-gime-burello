@@ -21,7 +21,8 @@ function Dashboard({ onAbrirPedido }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha + 'T00:00:00').toLocaleDateString
+    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
+    return new Date(fechaStr).toLocaleDateString('es-AR')
   }
 
   function nombreCliente(pedido) {
@@ -41,7 +42,6 @@ function Dashboard({ onAbrirPedido }) {
 
     const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10)
 
-    // Traemos todos los pedidos relevantes en pocas consultas
     const { data: pedidos } = await supabase
       .from('pedidos')
       .select('*, clientes(descripcion, cliente_anonimo)')
@@ -55,7 +55,6 @@ function Dashboard({ onAbrirPedido }) {
       return
     }
 
-    // Calculamos total y saldo de cada pedido
     const pedidosConTotales = pedidos.map((p) => {
       const lineasPedido = (detalles || []).filter((d) => d.id_pedido === p.id_pedido)
       const pagosPedido = (pagos || []).filter((pg) => pg.id_pedido === p.id_pedido)
@@ -67,15 +66,12 @@ function Dashboard({ onAbrirPedido }) {
       return { ...p, total, pagado, saldo }
     })
 
-    // Próximos a entregar: entre hoy y los próximos 7 días
     const proximos = pedidosConTotales.filter(
       (p) => p.fecha_entrega >= hoyStr && p.fecha_entrega <= en7diasStr
     )
 
-    // Con saldo pendiente (cualquier fecha)
     const pendientes = pedidosConTotales.filter((p) => p.saldo > 0.01)
 
-    // Resumen del mes en curso (por fecha de pedido)
     const pedidosDelMes = pedidosConTotales.filter((p) => p.fecha_pedido >= primerDiaMes)
     const totalFacturadoMes = pedidosDelMes.reduce((acc, p) => acc + p.total, 0)
     const totalCobradoMes = pedidosDelMes.reduce((acc, p) => acc + p.pagado, 0)
@@ -103,7 +99,6 @@ function Dashboard({ onAbrirPedido }) {
     <div className="modulo">
       <h2>Inicio</h2>
 
-      {/* Resumen del mes */}
       <div className="subseccion">
         <h3>Resumen del mes en curso</h3>
         <div className="simulador-precio">
@@ -122,73 +117,75 @@ function Dashboard({ onAbrirPedido }) {
         </div>
       </div>
 
-      {/* Próximos a entregar */}
       <div className="subseccion">
         <h3>Próximos a entregar (7 días)</h3>
         {proximosEntregar.length === 0 ? (
           <p className="aviso-ok">✅ No tenés entregas programadas para los próximos 7 días.</p>
         ) : (
-          <table className="tabla">
-            <thead>
-              <tr>
-                <th>Fecha entrega</th>
-                <th>Cliente</th>
-                <th>Total</th>
-                <th>Saldo</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {proximosEntregar.map((p) => (
-                <tr key={p.id_pedido}>
-                  <td>{formatearFecha(p.fecha_entrega)}</td>
-                  <td>{nombreCliente(p)}</td>
-                  <td>${formatearMoneda(p.total)}</td>
-                  <td>${formatearMoneda(p.saldo)}</td>
-                  <td>
-                    <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
-                      Ver pedido
-                    </button>
-                  </td>
+          <div className="tabla-wrapper">
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th>Fecha entrega</th>
+                  <th>Cliente</th>
+                  <th>Total</th>
+                  <th>Saldo</th>
+                  <th>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {proximosEntregar.map((p) => (
+                  <tr key={p.id_pedido}>
+                    <td>{formatearFecha(p.fecha_entrega)}</td>
+                    <td>{nombreCliente(p)}</td>
+                    <td>${formatearMoneda(p.total)}</td>
+                    <td>${formatearMoneda(p.saldo)}</td>
+                    <td>
+                      <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
+                        Ver pedido
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Con saldo pendiente */}
       <div className="subseccion">
         <h3>Pedidos con saldo pendiente</h3>
         {conSaldoPendiente.length === 0 ? (
           <p className="aviso-ok">✅ No hay pedidos con saldo pendiente.</p>
         ) : (
-          <table className="tabla">
-            <thead>
-              <tr>
-                <th>Fecha pedido</th>
-                <th>Cliente</th>
-                <th>Total</th>
-                <th>Saldo pendiente</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {conSaldoPendiente.map((p) => (
-                <tr key={p.id_pedido}>
-                  <td>{formatearFecha(p.fecha_pedido)}</td>
-                  <td>{nombreCliente(p)}</td>
-                  <td>${formatearMoneda(p.total)}</td>
-                  <td style={{ color: '#C0392B', fontWeight: 600 }}>${formatearMoneda(p.saldo)}</td>
-                  <td>
-                    <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
-                      Ver pedido
-                    </button>
-                  </td>
+          <div className="tabla-wrapper">
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th>Fecha pedido</th>
+                  <th>Cliente</th>
+                  <th>Total</th>
+                  <th>Saldo pendiente</th>
+                  <th>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {conSaldoPendiente.map((p) => (
+                  <tr key={p.id_pedido}>
+                    <td>{formatearFecha(p.fecha_pedido)}</td>
+                    <td>{nombreCliente(p)}</td>
+                    <td>${formatearMoneda(p.total)}</td>
+                    <td style={{ color: '#C0392B', fontWeight: 600 }}>${formatearMoneda(p.saldo)}</td>
+                    <td>
+                      <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
+                        Ver pedido
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

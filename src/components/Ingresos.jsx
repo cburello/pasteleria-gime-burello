@@ -47,7 +47,7 @@ function Ingresos() {
     }).format(valor)
   }
 
-function formatearFecha(fecha) {
+  function formatearFecha(fecha) {
     if (!fecha) return ''
     return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
   }
@@ -60,7 +60,7 @@ function formatearFecha(fecha) {
       .replace(/[\u0300-\u036f]/g, '')
   }
 
-async function cargarIngresos() {
+  async function cargarIngresos() {
     setCargando(true)
     setError(null)
     const { data, error } = await supabase
@@ -82,8 +82,8 @@ async function cargarIngresos() {
     setFechaDesdeFiltro(valor)
     setFechaHastaFiltro(ultimoDiaDelMes(valor))
   }
+
   async function cargarConceptos() {
-    // Excluimos "Pedidos" porque ese se genera automáticamente desde el módulo Pedidos
     const { data } = await supabase
       .from('conceptos')
       .select('*')
@@ -108,7 +108,6 @@ async function cargarIngresos() {
   }
 
   function iniciarEdicion(ingreso) {
-    // No permitir editar ingresos generados automáticamente desde Pedidos
     if (ingreso.id_pedido) {
       alert('Este ingreso fue generado automáticamente desde un pago de Pedidos y no se puede editar aquí.')
       return
@@ -121,7 +120,7 @@ async function cargarIngresos() {
     setObservaciones(ingreso.observaciones || '')
   }
 
-async function ajustarFechaSiCerrada(fechaStr) {
+  async function ajustarFechaSiCerrada(fechaStr) {
     let fechaActual = fechaStr
     let ajustada = false
 
@@ -170,7 +169,7 @@ async function ajustarFechaSiCerrada(fechaStr) {
 
     setGuardando(true)
 
-const registro = {
+    const registro = {
       id_concepto: parseInt(idConcepto),
       fecha: fechaAjustada,
       importe: parseFloat(importe),
@@ -228,7 +227,7 @@ const registro = {
         💡 Los ingresos por "Pedidos" se generan automáticamente al registrar un pago en el módulo Pedidos. Acá solo se cargan ingresos manuales (Consultoría, Aportes, etc.).
       </p>
 
-<div className="formulario formulario-costos" style={{ marginBottom: '20px' }}>
+      <div className="formulario formulario-costos" style={{ marginBottom: '20px' }}>
         <div className="campo">
           <label>Desde</label>
           <input
@@ -250,7 +249,7 @@ const registro = {
             🔎 Consultar
           </button>
         </div>
-      </div>      
+      </div>
 
       <form className="formulario formulario-costos" onSubmit={guardar}>
         <div className="campo">
@@ -328,42 +327,44 @@ const registro = {
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Concepto</th>
-              <th>Importe</th>
-              <th>Medio de pago</th>
-              <th>Origen</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ingresosFiltrados.length === 0 && (
+        <div className="tabla-wrapper">
+          <table className="tabla">
+            <thead>
               <tr>
-                <td colSpan="6">No hay ingresos registrados.</td>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th>Importe</th>
+                <th>Medio de pago</th>
+                <th>Origen</th>
+                <th>Acciones</th>
               </tr>
-            )}
-{ingresosFiltrados.map((i) => (
-              <tr key={i.id_ingreso}>
-                <td>{formatearFecha(i.fecha)}</td>
-                <td>{i.conceptos?.descripcion}</td>
-                <td>${formatearMoneda(i.importe)}</td>
-                <td>{i.medios_pagos?.descripcion || i.id_medio_pago}</td>
-                <td>{i.id_pedido ? `Pedido #${i.id_pedido}` : 'Manual'}</td>
-                <td>
-                  <button className="btn-link" onClick={() => iniciarEdicion(i)}>
-                    Editar
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminar(i)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {ingresosFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan="6">No hay ingresos registrados.</td>
+                </tr>
+              )}
+              {ingresosFiltrados.map((i) => (
+                <tr key={i.id_ingreso}>
+                  <td>{formatearFecha(i.fecha)}</td>
+                  <td>{i.conceptos?.descripcion}</td>
+                  <td>${formatearMoneda(i.importe)}</td>
+                  <td>{i.medios_pagos?.descripcion || i.id_medio_pago}</td>
+                  <td>{i.id_pedido ? `Pedido #${i.id_pedido}` : 'Manual'}</td>
+                  <td>
+                    <button className="btn-link" onClick={() => iniciarEdicion(i)}>
+                      Editar
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminar(i)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {!cargando && !error && ingresosFiltrados.length > 0 && (

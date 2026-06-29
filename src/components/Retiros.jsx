@@ -45,7 +45,7 @@ function Retiros() {
     }).format(valor)
   }
 
-function formatearFecha(fecha) {
+  function formatearFecha(fecha) {
     if (!fecha) return ''
     return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
   }
@@ -104,7 +104,7 @@ function formatearFecha(fecha) {
     setObservaciones(retiro.observaciones || '')
   }
 
-async function ajustarFechaSiCerrada(fechaStr) {
+  async function ajustarFechaSiCerrada(fechaStr) {
     let fechaActual = fechaStr
     let ajustada = false
 
@@ -163,7 +163,7 @@ async function ajustarFechaSiCerrada(fechaStr) {
 
     setGuardando(true)
 
-const registro = {
+    const registro = {
       fecha: fechaAjustada,
       importe: parseFloat(importe),
       id_medio_pago_origen: idMedioPagoOrigen,
@@ -309,42 +309,44 @@ const registro = {
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Importe</th>
-              <th>Origen</th>
-              <th>Destino</th>
-              <th>Observaciones</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {retirosFiltrados.length === 0 && (
+        <div className="tabla-wrapper">
+          <table className="tabla">
+            <thead>
               <tr>
-                <td colSpan="6">No hay retiros registrados.</td>
+                <th>Fecha</th>
+                <th>Importe</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Observaciones</th>
+                <th>Acciones</th>
               </tr>
-            )}
-{retirosFiltrados.map((r) => (
-              <tr key={r.id_retiro}>
-                <td>{formatearFecha(r.fecha)}</td>
-                <td>${formatearMoneda(r.importe)}</td>
-                <td>{r.origen?.descripcion || r.id_medio_pago_origen}</td>
-                <td>{r.destino?.descripcion || r.id_medio_pago_destino}</td>
-                <td>{r.observaciones || '—'}</td>
-                <td>
-                  <button className="btn-link" onClick={() => iniciarEdicion(r)}>
-                    Editar
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminar(r.id_retiro)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {retirosFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan="6">No hay retiros registrados.</td>
+                </tr>
+              )}
+              {retirosFiltrados.map((r) => (
+                <tr key={r.id_retiro}>
+                  <td>{formatearFecha(r.fecha)}</td>
+                  <td>${formatearMoneda(r.importe)}</td>
+                  <td>{r.origen?.descripcion || r.id_medio_pago_origen}</td>
+                  <td>{r.destino?.descripcion || r.id_medio_pago_destino}</td>
+                  <td>{r.observaciones || '—'}</td>
+                  <td>
+                    <button className="btn-link" onClick={() => iniciarEdicion(r)}>
+                      Editar
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminar(r.id_retiro)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {!cargando && !error && retirosFiltrados.length > 0 && (

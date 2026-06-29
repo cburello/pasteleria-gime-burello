@@ -87,7 +87,8 @@ function Recetas() {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha + 'T00:00:00').toLocaleDateString
+    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
+    return new Date(fechaStr).toLocaleDateString('es-AR')
   }
 
   if (vista === 'detalle') {
@@ -126,43 +127,45 @@ function Recetas() {
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Descripción</th>
-              <th>Cant. Producto Final</th>
-              <th>Vigencia</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recetasFiltradas.length === 0 && (
+        <div className="tabla-wrapper">
+          <table className="tabla">
+            <thead>
               <tr>
-                <td colSpan="5">No hay recetas registradas.</td>
+                <th>ID</th>
+                <th>Descripción</th>
+                <th>Cant. Producto Final</th>
+                <th>Vigencia</th>
+                <th>Acciones</th>
               </tr>
-            )}
-            {recetasFiltradas.map((r) => (
-              <tr key={r.id_receta}>
-                <td>{r.id_receta}</td>
-                <td>{r.descripcion}</td>
-                <td>{r.cantidad_producto_final}</td>
-                <td>
-                  {formatearFecha(r.fecha_inicio)} —{' '}
-                  {r.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(r.fecha_fin)}
-                </td>
-                <td>
-                  <button className="btn-link" onClick={() => abrirReceta(r)}>
-                    Ver / Editar
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminarReceta(r.id_receta)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {recetasFiltradas.length === 0 && (
+                <tr>
+                  <td colSpan="5">No hay recetas registradas.</td>
+                </tr>
+              )}
+              {recetasFiltradas.map((r) => (
+                <tr key={r.id_receta}>
+                  <td>{r.id_receta}</td>
+                  <td>{r.descripcion}</td>
+                  <td>{r.cantidad_producto_final}</td>
+                  <td>
+                    {formatearFecha(r.fecha_inicio)} —{' '}
+                    {r.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(r.fecha_fin)}
+                  </td>
+                  <td>
+                    <button className="btn-link" onClick={() => abrirReceta(r)}>
+                      Ver / Editar
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminarReceta(r.id_receta)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
@@ -186,7 +189,6 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
   const [materiaParaAgregar, setMateriaParaAgregar] = useState(null)
   const [cantidadIngrediente, setCantidadIngrediente] = useState('')
 
-  // Unidad y costo vigente de la materia prima seleccionada (NO editable, viene de costos)
   const [costoVigenteMateria, setCostoVigenteMateria] = useState(null)
   const [buscandoCosto, setBuscandoCosto] = useState(false)
 
@@ -219,8 +221,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     setMateriasPrimas(data || [])
   }
 
-  // Trae el costo vigente (hoy) de una materia prima específica
-async function obtenerCostoVigente(idMateriaPrima) {
+  async function obtenerCostoVigente(idMateriaPrima) {
     const hoy = new Date().toISOString().slice(0, 10)
     const { data, error } = await supabase
       .from('costos_materia_prima')
@@ -235,14 +236,13 @@ async function obtenerCostoVigente(idMateriaPrima) {
     return data[0]
   }
 
-  // Extrae la cantidad numérica de la presentación, ej: "25000 Gramos" -> 25000
   function extraerCantidadPresentacion(presentacion) {
     const match = presentacion.match(/[\d.,]+/)
     if (!match) return null
     return parseFloat(match[0].replace(',', '.'))
   }
 
-async function cargarIngredientes() {
+  async function cargarIngredientes() {
     setCargandoIngredientes(true)
     const { data, error } = await supabase
       .from('detalle_receta')
@@ -251,7 +251,6 @@ async function cargarIngredientes() {
       .order('secuencia', { ascending: true })
 
     if (!error) {
-      // Para cada ingrediente, buscamos su costo vigente HOY para mostrar presentación y costo calculado
       const conCosto = await Promise.all(
         data.map(async (ing) => {
           const costo = await obtenerCostoVigente(ing.id_materia_prima)
@@ -275,7 +274,6 @@ async function cargarIngredientes() {
     setCargandoIngredientes(false)
   }
 
-  // Calcula el costo total de la receta sumando cada ingrediente
   async function calcularCostoTotal() {
     if (ingredientes.length === 0) {
       setCostoTotal(0)
@@ -404,7 +402,6 @@ async function cargarIngredientes() {
     }
   }
 
-  // Cuando se selecciona una materia prima del buscador, vamos a buscar su costo vigente
   async function seleccionarMateria(materia) {
     setMateriaParaAgregar(materia)
     setTextoBuscarMateria(materia.descripcion)
@@ -443,7 +440,7 @@ async function cargarIngredientes() {
       id_materia_prima: materiaParaAgregar.id_materia_prima,
       secuencia: siguienteSecuencia,
       cantidad: parseFloat(cantidadIngrediente),
-      unidad_medida: costoVigenteMateria.unidad_medida, // se toma directo del costo vigente
+      unidad_medida: costoVigenteMateria.unidad_medida,
     })
 
     if (error) {
@@ -566,7 +563,6 @@ async function cargarIngredientes() {
               style={{ maxWidth: '120px' }}
             />
 
-            {/* Unidad de medida: NO editable, viene del costo vigente */}
             <div className="unidad-fija">
               {buscandoCosto && '...'}
               {!buscandoCosto && materiaParaAgregar && costoVigenteMateria && (
@@ -586,41 +582,44 @@ async function cargarIngredientes() {
           {cargandoIngredientes && <p>Cargando ingredientes...</p>}
 
           {!cargandoIngredientes && (
-            <table className="tabla">
-<thead>
-                <tr>
-                  <th>Materia Prima</th>
-                  <th>Cantidad</th>
-                  <th>Unidad</th>
-                  <th>Presentación</th>
-                  <th>Costo</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ingredientes.length === 0 && (
+            <div className="tabla-wrapper">
+              <table className="tabla">
+                <thead>
                   <tr>
-                    <td colSpan="6">Todavía no agregaste ingredientes.</td>
+                    <th>Materia Prima</th>
+                    <th>Cantidad</th>
+                    <th>Unidad</th>
+                    <th>Presentación</th>
+                    <th>Costo</th>
+                    <th>Acciones</th>
                   </tr>
-                )}
-                {ingredientes.map((ing) => (
-                  <tr key={`${ing.id_materia_prima}-${ing.secuencia}`}>
-                    <td>{ing.materias_primas?.descripcion || ing.id_materia_prima}</td>
-                    <td>{ing.cantidad}</td>
-                    <td>{ing.unidad_medida}</td>
-                    <td>{ing.presentacion_vigente || <span className="badge-error-texto">Sin costo vigente</span>}</td>
-                    <td>{ing.costo_calculado !== null ? `$${ing.costo_calculado.toFixed(2)}` : '—'}</td>
-                    <td>
-                      <button
-                        className="btn-link btn-eliminar"
-                        onClick={() => quitarIngrediente(ing.id_materia_prima, ing.secuencia)}
-                      >
-                        Quitar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>            </table>
+                </thead>
+                <tbody>
+                  {ingredientes.length === 0 && (
+                    <tr>
+                      <td colSpan="6">Todavía no agregaste ingredientes.</td>
+                    </tr>
+                  )}
+                  {ingredientes.map((ing) => (
+                    <tr key={`${ing.id_materia_prima}-${ing.secuencia}`}>
+                      <td>{ing.materias_primas?.descripcion || ing.id_materia_prima}</td>
+                      <td>{ing.cantidad}</td>
+                      <td>{ing.unidad_medida}</td>
+                      <td>{ing.presentacion_vigente || <span className="badge-error-texto">Sin costo vigente</span>}</td>
+                      <td>{ing.costo_calculado !== null ? `$${ing.costo_calculado.toFixed(2)}` : '—'}</td>
+                      <td>
+                        <button
+                          className="btn-link btn-eliminar"
+                          onClick={() => quitarIngrediente(ing.id_materia_prima, ing.secuencia)}
+                        >
+                          Quitar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
           <div className="costo-total">

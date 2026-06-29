@@ -221,40 +221,42 @@ function MateriasPrimas() {
       {cargando && <p>Cargando...</p>}
       {error && <p className="mensaje-error">{error}</p>}
 
-      {!cargando && !error && (
-        <table className="tabla">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Descripción</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {listaAMostrar.length === 0 && (
+{!cargando && !error && (
+        <div className="tabla-wrapper">
+          <table className="tabla">
+            <thead>
               <tr>
-                <td colSpan="3">No se encontraron materias primas.</td>
+                <th>ID</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
               </tr>
-            )}
-            {listaAMostrar.map((m) => (
-              <tr key={m.id_materia_prima} className={similaresEncontrados !== null ? 'fila-destacada' : ''}>
-                <td>{m.id_materia_prima}</td>
-                <td>{m.descripcion}</td>
-                <td>
-                  <button className="btn-link" onClick={() => iniciarEdicion(m)}>
-                    Editar
-                  </button>
-                  <button className="btn-link" onClick={() => setMateriaSeleccionada(m)}>
-                    Ver costos
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminar(m.id_materia_prima)}>
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {listaAMostrar.length === 0 && (
+                <tr>
+                  <td colSpan="3">No se encontraron materias primas.</td>
+                </tr>
+              )}
+              {listaAMostrar.map((m) => (
+                <tr key={m.id_materia_prima} className={similaresEncontrados !== null ? 'fila-destacada' : ''}>
+                  <td>{m.id_materia_prima}</td>
+                  <td>{m.descripcion}</td>
+                  <td>
+                    <button className="btn-link" onClick={() => iniciarEdicion(m)}>
+                      Editar
+                    </button>
+                    <button className="btn-link" onClick={() => setMateriaSeleccionada(m)}>
+                      Ver costos
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminar(m.id_materia_prima)}>
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

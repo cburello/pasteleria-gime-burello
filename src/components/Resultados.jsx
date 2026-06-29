@@ -138,7 +138,7 @@ function Resultados() {
     return []
   }
 
-function formatearFecha(fecha) {
+  function formatearFecha(fecha) {
     if (!fecha) return ''
     return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
   }
@@ -161,12 +161,11 @@ function formatearFecha(fecha) {
     return data[0]
   }
 
-async function handleCerrarPeriodo() {
+  async function handleCerrarPeriodo() {
     if (periodosSeleccionados.length === 0) return
 
     const periodo = periodosSeleccionados[0]
 
-    // Período actual (mes en curso), en formato "AAAA-MM"
     const hoy = new Date()
     const periodoActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
 
@@ -210,7 +209,7 @@ async function handleCerrarPeriodo() {
         return
       }
 
-const primerDiaPeriodo = periodo + '-01'
+      const primerDiaPeriodo = periodo + '-01'
 
       for (const idMedioPago of mediosPagoDelPeriodo) {
         const filaIngreso = filasDelPeriodo.find((f) => f.origen === 'Ingreso' && f.id_medio_pago === idMedioPago)
@@ -283,66 +282,68 @@ const primerDiaPeriodo = periodo + '-01'
             {filasAbiertas.length === 0 ? (
               <p className="aviso-ok">✅ No hay movimientos pendientes de cierre.</p>
             ) : (
-              <table className="tabla">
-                <thead>
-                  <tr>
-                    <th>Cerrar</th>
-                    <th></th>
-                    <th>Período</th>
-                    <th>Origen</th>
-                    <th>Medio de pago</th>
-                    <th>Importe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filasAbiertas.map((fila, idx) => (
-                    <>
-                      <tr key={idx}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={periodosSeleccionados.includes(fila.periodo)}
-                            onChange={() => togglePeriodo(fila.periodo)}
-                          />
-                        </td>
-                        <td>
-                          <button
-                            className="btn-link"
-                            onClick={() => setFilaExpandida(filaExpandida === idx ? null : idx)}
-                            style={{ fontSize: '16px' }}
-                          >
-                            {filaExpandida === idx ? '▾' : '▸'}
-                          </button>
-                        </td>
-                        <td>{formatearPeriodo(fila.periodo)}</td>
-                        <td>
-                          <span
-                            className={
-                              'badge-origen ' +
-                              (fila.origen === 'Ingreso'
-                                ? 'badge-ingreso'
-                                : fila.origen === 'Gasto'
-                                ? 'badge-gasto'
-                                : 'badge-retiro')
-                            }
-                          >
-                            {fila.origen}
-                          </span>
-                        </td>
-                        <td>{fila.medio_pago}</td>
-                        <td>${formatearMoneda(fila.importe)}</td>
-                      </tr>
-                      {filaExpandida === idx && (
-                        <tr>
-                          <td colSpan="6" style={{ backgroundColor: '#FFF8F5', padding: '12px 20px' }}>
-                            <DetalleOrigen registros={obtenerDetalle(fila)} origen={fila.origen} />
+              <div className="tabla-wrapper">
+                <table className="tabla">
+                  <thead>
+                    <tr>
+                      <th>Cerrar</th>
+                      <th></th>
+                      <th>Período</th>
+                      <th>Origen</th>
+                      <th>Medio de pago</th>
+                      <th>Importe</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filasAbiertas.map((fila, idx) => (
+                      <>
+                        <tr key={idx}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={periodosSeleccionados.includes(fila.periodo)}
+                              onChange={() => togglePeriodo(fila.periodo)}
+                            />
                           </td>
+                          <td>
+                            <button
+                              className="btn-link"
+                              onClick={() => setFilaExpandida(filaExpandida === idx ? null : idx)}
+                              style={{ fontSize: '16px' }}
+                            >
+                              {filaExpandida === idx ? '▾' : '▸'}
+                            </button>
+                          </td>
+                          <td>{formatearPeriodo(fila.periodo)}</td>
+                          <td>
+                            <span
+                              className={
+                                'badge-origen ' +
+                                (fila.origen === 'Ingreso'
+                                  ? 'badge-ingreso'
+                                  : fila.origen === 'Gasto'
+                                  ? 'badge-gasto'
+                                  : 'badge-retiro')
+                              }
+                            >
+                              {fila.origen}
+                            </span>
+                          </td>
+                          <td>{fila.medio_pago}</td>
+                          <td>${formatearMoneda(fila.importe)}</td>
                         </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
+                        {filaExpandida === idx && (
+                          <tr>
+                            <td colSpan="6" style={{ backgroundColor: '#FFF8F5', padding: '12px 20px' }}>
+                              <DetalleOrigen registros={obtenerDetalle(fila)} origen={fila.origen} />
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
 
             {filasAbiertas.length > 0 && (
@@ -398,53 +399,55 @@ const primerDiaPeriodo = periodo + '-01'
         )}
 
         {!cargando && periodosCerrados.length > 0 && (
-          <table className="tabla">
-            <thead>
-              <tr>
-                <th>Período</th>
-                <th>Medio de pago</th>
-                <th>Saldo anterior</th>
-                <th>Ingresos</th>
-                <th>Gastos</th>
-                <th>Retiros</th>
-                <th>Resultado</th>
-                <th>Fecha cierre</th>
-              </tr>
-            </thead>
-            <tbody>
-              {periodosCerrados.map((r) => {
-                const saldoAnterior =
-                  parseFloat(r.importe_resultado) -
-                  parseFloat(r.importe_ingresos) +
-                  parseFloat(r.importe_gastos) +
-                  parseFloat(r.importe_retiro)
+          <div className="tabla-wrapper">
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th>Período</th>
+                  <th>Medio de pago</th>
+                  <th>Saldo anterior</th>
+                  <th>Ingresos</th>
+                  <th>Gastos</th>
+                  <th>Retiros</th>
+                  <th>Resultado</th>
+                  <th>Fecha cierre</th>
+                </tr>
+              </thead>
+              <tbody>
+                {periodosCerrados.map((r) => {
+                  const saldoAnterior =
+                    parseFloat(r.importe_resultado) -
+                    parseFloat(r.importe_ingresos) +
+                    parseFloat(r.importe_gastos) +
+                    parseFloat(r.importe_retiro)
 
-                const fechaPeriodo = new Date(r.periodo + 'T00:00:00')
-                fechaPeriodo.setMonth(fechaPeriodo.getMonth() - 1)
-                const periodoAnteriorStr = `${fechaPeriodo.getFullYear()}-${String(fechaPeriodo.getMonth() + 1).padStart(2, '0')}`
+                  const fechaPeriodo = new Date(r.periodo + 'T00:00:00')
+                  fechaPeriodo.setMonth(fechaPeriodo.getMonth() - 1)
+                  const periodoAnteriorStr = `${fechaPeriodo.getFullYear()}-${String(fechaPeriodo.getMonth() + 1).padStart(2, '0')}`
 
-                return (
-                  <tr key={r.id_resultado}>
-                    <td>{formatearPeriodo(r.periodo.slice(0, 7))}</td>
-                    <td>{r.medios_pagos?.descripcion || r.id_medio_pago}</td>
-                    <td>
-                      ${formatearMoneda(saldoAnterior)}
-                      <span style={{ display: 'block', fontSize: '11px', color: '#A68E89' }}>
-                        ({formatearPeriodo(periodoAnteriorStr)})
-                      </span>
-                    </td>
-                    <td>${formatearMoneda(r.importe_ingresos)}</td>
-                    <td>${formatearMoneda(r.importe_gastos)}</td>
-                    <td>${formatearMoneda(r.importe_retiro)}</td>
-                    <td style={{ fontWeight: 600, color: r.importe_resultado >= 0 ? '#2D6A35' : '#C0392B' }}>
-                      ${formatearMoneda(r.importe_resultado)}
-                    </td>
-                    <td>{new Date(r.fecha_cierre).toLocaleDateString('es-AR')}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                  return (
+                    <tr key={r.id_resultado}>
+                      <td>{formatearPeriodo(r.periodo.slice(0, 7))}</td>
+                      <td>{r.medios_pagos?.descripcion || r.id_medio_pago}</td>
+                      <td>
+                        ${formatearMoneda(saldoAnterior)}
+                        <span style={{ display: 'block', fontSize: '11px', color: '#A68E89' }}>
+                          ({formatearPeriodo(periodoAnteriorStr)})
+                        </span>
+                      </td>
+                      <td>${formatearMoneda(r.importe_ingresos)}</td>
+                      <td>${formatearMoneda(r.importe_gastos)}</td>
+                      <td>${formatearMoneda(r.importe_retiro)}</td>
+                      <td style={{ fontWeight: 600, color: r.importe_resultado >= 0 ? '#2D6A35' : '#C0392B' }}>
+                        ${formatearMoneda(r.importe_resultado)}
+                      </td>
+                      <td>{new Date(r.fecha_cierre).toLocaleDateString('es-AR')}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -465,7 +468,7 @@ function DetalleOrigen({ registros, origen }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha + 'T00:00:00').toLocaleDateString
+    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
   }
 
   if (registros.length === 0) {
@@ -474,28 +477,30 @@ function DetalleOrigen({ registros, origen }) {
 
   if (origen === 'Gasto') {
     return (
-      <table className="tabla" style={{ fontSize: '13px' }}>
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Concepto</th>
-            <th>Proveedor</th>
-            <th>Observaciones</th>
-            <th>Importe</th>
-          </tr>
-        </thead>
-        <tbody>
-          {registros.map((r, i) => (
-            <tr key={i}>
-              <td>{formatearFecha(r.fecha)}</td>
-              <td>{r.conceptos?.descripcion || '—'}</td>
-              <td>{r.id_proveedor != null ? r.proveedores?.descripcion || '—' : '—'}</td>
-              <td>{r.observaciones || '—'}</td>
-              <td>${formatearMoneda(r.importe)}</td>
+      <div className="tabla-wrapper">
+        <table className="tabla" style={{ fontSize: '13px' }}>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Concepto</th>
+              <th>Proveedor</th>
+              <th>Observaciones</th>
+              <th>Importe</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {registros.map((r, i) => (
+              <tr key={i}>
+                <td>{formatearFecha(r.fecha)}</td>
+                <td>{r.conceptos?.descripcion || '—'}</td>
+                <td>{r.id_proveedor != null ? r.proveedores?.descripcion || '—' : '—'}</td>
+                <td>{r.observaciones || '—'}</td>
+                <td>${formatearMoneda(r.importe)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     )
   }
 
@@ -504,24 +509,26 @@ function DetalleOrigen({ registros, origen }) {
   }
 
   return (
-    <table className="tabla" style={{ fontSize: '13px' }}>
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Destino</th>
-          <th>Importe</th>
-        </tr>
-      </thead>
-      <tbody>
-        {registros.map((r, i) => (
-          <tr key={i}>
-            <td>{formatearFecha(r.fecha)}</td>
-            <td>{r.observaciones || '—'}</td>
-            <td>${formatearMoneda(r.importe)}</td>
+    <div className="tabla-wrapper">
+      <table className="tabla" style={{ fontSize: '13px' }}>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Destino</th>
+            <th>Importe</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {registros.map((r, i) => (
+            <tr key={i}>
+              <td>{formatearFecha(r.fecha)}</td>
+              <td>{r.observaciones || '—'}</td>
+              <td>${formatearMoneda(r.importe)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -553,47 +560,49 @@ function DetalleIngresoPorConcepto({ registros }) {
 
   return (
     <div className="nivel-2-wrapper">
-      <table className="nivel-2-tabla">
-        <thead>
-          <tr>
-            <th style={{ width: '20px' }}></th>
-            <th>Concepto</th>
-            <th style={{ textAlign: 'right' }}>Importe</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filasConcepto.map((fc, idx) => (
-            <>
-              <tr key={idx}>
-                <td>
-                  <button
-                    className="btn-link"
-                    onClick={() => setConceptoExpandido(conceptoExpandido === idx ? null : idx)}
-                    style={{ fontSize: '18px', color: '#D85A30', fontWeight: 700 }}
-                  >
-                    {conceptoExpandido === idx ? '▾' : '▸'}
-                  </button>
-                </td>
-                <td>{fc.concepto}</td>
-                <td style={{ textAlign: 'right' }}>${formatearMoneda(fc.importe)}</td>
-              </tr>
-              {conceptoExpandido === idx && (
-                <tr>
-                  <td colSpan="3" style={{ padding: 0, border: 'none' }}>
-                    <div className="nivel-3-wrapper">
-                      {fc.concepto === 'Pedidos' ? (
-                        <DetallePedidosDeIngresos registros={fc.registros} />
-                      ) : (
-                        <DetalleIngresoSimple registros={fc.registros} />
-                      )}
-                    </div>
+      <div className="tabla-wrapper">
+        <table className="nivel-2-tabla">
+          <thead>
+            <tr>
+              <th style={{ width: '20px' }}></th>
+              <th>Concepto</th>
+              <th style={{ textAlign: 'right' }}>Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filasConcepto.map((fc, idx) => (
+              <>
+                <tr key={idx}>
+                  <td>
+                    <button
+                      className="btn-link"
+                      onClick={() => setConceptoExpandido(conceptoExpandido === idx ? null : idx)}
+                      style={{ fontSize: '18px', color: '#D85A30', fontWeight: 700 }}
+                    >
+                      {conceptoExpandido === idx ? '▾' : '▸'}
+                    </button>
                   </td>
+                  <td>{fc.concepto}</td>
+                  <td style={{ textAlign: 'right' }}>${formatearMoneda(fc.importe)}</td>
                 </tr>
-              )}
-            </>
-          ))}
-        </tbody>
-      </table>
+                {conceptoExpandido === idx && (
+                  <tr>
+                    <td colSpan="3" style={{ padding: 0, border: 'none' }}>
+                      <div className="nivel-3-wrapper">
+                        {fc.concepto === 'Pedidos' ? (
+                          <DetallePedidosDeIngresos registros={fc.registros} />
+                        ) : (
+                          <DetalleIngresoSimple registros={fc.registros} />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -612,28 +621,30 @@ function DetalleIngresoSimple({ registros }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha + 'T00:00:00').toLocaleDateString
+    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
   }
 
   return (
-    <table className="nivel-3-tabla">
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Observaciones</th>
-          <th style={{ textAlign: 'right' }}>Importe</th>
-        </tr>
-      </thead>
-      <tbody>
-        {registros.map((r, i) => (
-          <tr key={i}>
-            <td>{formatearFecha(r.fecha)}</td>
-            <td>{r.observaciones || '—'}</td>
-            <td style={{ textAlign: 'right' }}>${formatearMoneda(r.importe)}</td>
+    <div className="tabla-wrapper">
+      <table className="nivel-3-tabla">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Observaciones</th>
+            <th style={{ textAlign: 'right' }}>Importe</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {registros.map((r, i) => (
+            <tr key={i}>
+              <td>{formatearFecha(r.fecha)}</td>
+              <td>{r.observaciones || '—'}</td>
+              <td style={{ textAlign: 'right' }}>${formatearMoneda(r.importe)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -650,33 +661,35 @@ function DetallePedidosDeIngresos({ registros }) {
   }
 
   function formatearFecha(fecha) {
-    if (!fecha) return '' 
-    return new Date(fecha + 'T00:00:00').toLocaleDateString
+    if (!fecha) return ''
+    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
   }
 
   return (
-    <table className="nivel-3-tabla">
-      <thead>
-        <tr>
-          <th>ID Pedido</th>
-          <th>Fecha pedido</th>
-          <th>Fecha entrega</th>
-          <th>Cliente</th>
-          <th style={{ textAlign: 'right' }}>Importe</th>
-        </tr>
-      </thead>
-      <tbody>
-        {registros.map((r, i) => (
-          <tr key={i}>
-            <td>#{r.id_pedido}</td>
-            <td>{formatearFecha(r.pedidos?.fecha_pedido)}</td>
-            <td>{formatearFecha(r.pedidos?.fecha_entrega)}</td>
-            <td>{r.pedidos?.descripcion || '—'}</td>
-            <td style={{ textAlign: 'right' }}>${formatearMoneda(r.importe)}</td>
+    <div className="tabla-wrapper">
+      <table className="nivel-3-tabla">
+        <thead>
+          <tr>
+            <th>ID Pedido</th>
+            <th>Fecha pedido</th>
+            <th>Fecha entrega</th>
+            <th>Cliente</th>
+            <th style={{ textAlign: 'right' }}>Importe</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {registros.map((r, i) => (
+            <tr key={i}>
+              <td>#{r.id_pedido}</td>
+              <td>{formatearFecha(r.pedidos?.fecha_pedido)}</td>
+              <td>{formatearFecha(r.pedidos?.fecha_entrega)}</td>
+              <td>{r.pedidos?.descripcion || '—'}</td>
+              <td style={{ textAlign: 'right' }}>${formatearMoneda(r.importe)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
