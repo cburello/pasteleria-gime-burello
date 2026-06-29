@@ -1,7 +1,21 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+function useEsMobile() {
+  const [esMobile, setEsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
+  useEffect(() => {
+    function handler() { setEsMobile(window.innerWidth <= 768) }
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  return esMobile
+}
+
 function Gastos() {
+  const esMobile = useEsMobile()
+
   const [gastos, setGastos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -21,6 +35,9 @@ function Gastos() {
   const [guardando, setGuardando] = useState(false)
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
+
+  // Mobile: controla si se muestra el formulario de carga o la lista
+  const [modoMobile, setModoMobile] = useState('lista') // 'lista' | 'form'
 
   useEffect(() => {
     cargarGastos()
@@ -105,9 +122,9 @@ function Gastos() {
     setComprobante(gasto.comprobante || '')
     setIdProveedor(gasto.id_proveedor || '')
     setObservaciones(gasto.observaciones || '')
+    if (esMobile) setModoMobile('form')
   }
 
-  // Si la fecha cae en un período cerrado, busca el primer mes ABIERTO disponible y avisa
   async function ajustarFechaSiCerrada(fechaStr) {
     let fechaActual = fechaStr
     let ajustada = false
@@ -151,9 +168,7 @@ function Gastos() {
     }
 
     const fechaAjustada = await ajustarFechaSiCerrada(fecha)
-    if (fechaAjustada !== fecha) {
-      setFecha(fechaAjustada)
-    }
+    if (fechaAjustada !== fecha) setFecha(fechaAjustada)
 
     setGuardando(true)
 
@@ -179,6 +194,7 @@ function Gastos() {
     } else {
       limpiarFormulario()
       cargarGastos()
+      if (esMobile) setModoMobile('lista')
     }
 
     setGuardando(false)
@@ -205,6 +221,178 @@ function Gastos() {
       )
     : gastos
 
+  const totalesPorMedio = gastosFiltrados.reduce((acc, g) => {
+    const medio = g.medios_pagos?.descripcion || g.id_medio_pago
+    acc[medio] = (acc[medio] || 0) + parseFloat(g.importe)
+    return acc
+  }, {})
+
+  const totalGeneral = gastosFiltrados.reduce((acc, g) => acc + parseFloat(g.importe), 0)
+
+  // ===== VISTA MOBILE =====
+  if (esMobile) {
+    // Formulario de carga/edición
+    if (modoMobile === 'form') {
+      return (
+        <div className="pedidos-mobile">
+          <div className="mobile-paso-header">
+            <button onClick={() => { limpiarFormulario(); setModoMobile('lista') }}>←</button>
+            <span>{editandoId ? 'Editar gasto' : 'Nuevo gasto'}</span>
+          </div>
+
+          <form onSubmit={guardar}>
+            <div className="campos-apilados">
+              <div className="campo">
+                <label>Concepto</label>
+                <select value={idConcepto} onChange={(e) => setIdConcepto(e.target.value)}>
+                  <option value="">Seleccionar...</option>
+                  {conceptos.map((c) => (
+                    <option key={c.id_concepto} value={c.id_concepto}>{c.descripcion}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="campo">
+                <label>Fecha</label>
+                <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              </div>
+
+              <div className="campo">
+                <label>Importe</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={importe}
+                  onChange={(e) => setImporte(e.target.value)}
+                />
+              </div>
+
+              <div className="campo">
+                <label>Medio de pago</label>
+                <select value={idMedioPago} onChange={(e) => setIdMedioPago(e.target.value)}>
+                  <option value="">Seleccionar...</option>
+                  {mediosPago.map((m) => (
+                    <option key={m.id_medio_pago} value={m.id_medio_pago}>{m.descripcion}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="campo">
+                <label>Proveedor (opcional)</label>
+                <select value={idProveedor} onChange={(e) => setIdProveedor(e.target.value)}>
+                  <option value="">Sin proveedor</option>
+                  {proveedores.map((p) => (
+                    <option key={p.id_proveedor} value={p.id_proveedor}>{p.descripcion}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="campo">
+                <label>Comprobante (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Factura A-001"
+                  value={comprobante}
+                  onChange={(e) => setComprobante(e.target.value)}
+                />
+              </div>
+
+              <div className="campo">
+                <label>Observaciones</label>
+                <input
+                  type="text"
+                  placeholder="Observaciones libres"
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mobile-acciones-finales">
+              <button type="submit" className="btn-primario" disabled={guardando}>
+                {guardando ? 'Guardando...' : editandoId ? 'Actualizar gasto' : 'Guardar gasto'}
+              </button>
+              {editandoId && (
+                <button type="button" className="btn-secundario" onClick={() => { limpiarFormulario(); setModoMobile('lista') }}>
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      )
+    }
+
+    // Lista de gastos en tarjetas
+    return (
+      <div className="pedidos-mobile">
+        <div className="pedidos-mobile-header">
+          <h2>Gastos</h2>
+        </div>
+
+        <div className="campo-buscador">
+          <input
+            type="text"
+            placeholder="🔎 Buscar por concepto, proveedor..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
+        </div>
+
+        {cargando && <p>Cargando...</p>}
+        {error && <p className="mensaje-error">{error}</p>}
+
+        {!cargando && !error && (
+          <div className="lista-tarjetas">
+            {gastosFiltrados.length === 0 && <p>No hay gastos registrados.</p>}
+
+            {gastosFiltrados.map((g) => (
+              <div key={g.id_gasto} className="tarjeta-pedido" onClick={() => iniciarEdicion(g)}>
+                <div className="tarjeta-pedido-linea1">
+                  <span className="tarjeta-pedido-cliente">{g.conceptos?.descripcion}</span>
+                  <span className="tarjeta-pedido-id">{formatearFecha(g.fecha)}</span>
+                </div>
+                {g.proveedores?.descripcion && (
+                  <div className="tarjeta-pedido-fecha">{g.proveedores.descripcion}</div>
+                )}
+                {g.observaciones && (
+                  <div className="tarjeta-pedido-fecha">{g.observaciones}</div>
+                )}
+                <div className="tarjeta-pedido-linea2">
+                  <span className="tarjeta-pedido-total">{g.medios_pagos?.descripcion}</span>
+                  <span className="tarjeta-pedido-estado pendiente">${formatearMoneda(g.importe)}</span>
+                </div>
+                <div className="tarjeta-pedido-acciones">
+                  <button
+                    className="btn-link btn-eliminar"
+                    onClick={(e) => { e.stopPropagation(); eliminar(g.id_gasto) }}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {gastosFiltrados.length > 0 && (
+              <div className="costo-total" style={{ marginBottom: '6px' }}>
+                {Object.entries(totalesPorMedio).map(([medio, total]) => (
+                  <div key={medio}>💰 {medio}: <strong>${formatearMoneda(total)}</strong></div>
+                ))}
+                <div style={{ marginTop: '6px' }}>Total: <strong>${formatearMoneda(totalGeneral)}</strong></div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <button className="boton-flotante" onClick={() => { limpiarFormulario(); setModoMobile('form') }} aria-label="Nuevo gasto">
+          +
+        </button>
+      </div>
+    )
+  }
+
+  // ===== VISTA DESKTOP (sin cambios) =====
   return (
     <div className="modulo">
       <h2>Gastos</h2>
@@ -215,9 +403,7 @@ function Gastos() {
           <select value={idConcepto} onChange={(e) => setIdConcepto(e.target.value)}>
             <option value="">Seleccionar...</option>
             {conceptos.map((c) => (
-              <option key={c.id_concepto} value={c.id_concepto}>
-                {c.descripcion}
-              </option>
+              <option key={c.id_concepto} value={c.id_concepto}>{c.descripcion}</option>
             ))}
           </select>
         </div>
@@ -243,9 +429,7 @@ function Gastos() {
           <select value={idMedioPago} onChange={(e) => setIdMedioPago(e.target.value)}>
             <option value="">Seleccionar...</option>
             {mediosPago.map((m) => (
-              <option key={m.id_medio_pago} value={m.id_medio_pago}>
-                {m.descripcion}
-              </option>
+              <option key={m.id_medio_pago} value={m.id_medio_pago}>{m.descripcion}</option>
             ))}
           </select>
         </div>
@@ -265,9 +449,7 @@ function Gastos() {
           <select value={idProveedor} onChange={(e) => setIdProveedor(e.target.value)}>
             <option value="">Sin proveedor</option>
             {proveedores.map((p) => (
-              <option key={p.id_proveedor} value={p.id_proveedor}>
-                {p.descripcion}
-              </option>
+              <option key={p.id_proveedor} value={p.id_proveedor}>{p.descripcion}</option>
             ))}
           </select>
         </div>
@@ -287,9 +469,7 @@ function Gastos() {
             {guardando ? 'Guardando...' : editandoId ? 'Actualizar' : 'Agregar'}
           </button>
           {editandoId && (
-            <button type="button" className="btn-secundario" onClick={limpiarFormulario}>
-              Cancelar
-            </button>
+            <button type="button" className="btn-secundario" onClick={limpiarFormulario}>Cancelar</button>
           )}
         </div>
       </form>
@@ -322,9 +502,7 @@ function Gastos() {
             </thead>
             <tbody>
               {gastosFiltrados.length === 0 && (
-                <tr>
-                  <td colSpan="7">No hay gastos registrados.</td>
-                </tr>
+                <tr><td colSpan="7">No hay gastos registrados.</td></tr>
               )}
               {gastosFiltrados.map((g) => (
                 <tr key={g.id_gasto}>
@@ -335,12 +513,8 @@ function Gastos() {
                   <td>{g.proveedores?.descripcion || '—'}</td>
                   <td>{g.comprobante || '—'}</td>
                   <td>
-                    <button className="btn-link" onClick={() => iniciarEdicion(g)}>
-                      Editar
-                    </button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminar(g.id_gasto)}>
-                      Eliminar
-                    </button>
+                    <button className="btn-link" onClick={() => iniciarEdicion(g)}>Editar</button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminar(g.id_gasto)}>Eliminar</button>
                   </td>
                 </tr>
               ))}
@@ -351,22 +525,12 @@ function Gastos() {
 
       {!cargando && !error && gastosFiltrados.length > 0 && (
         <div className="costo-total">
-          {Object.entries(
-            gastosFiltrados.reduce((acc, g) => {
-              const medio = g.medios_pagos?.descripcion || g.id_medio_pago
-              acc[medio] = (acc[medio] || 0) + parseFloat(g.importe)
-              return acc
-            }, {})
-          ).map(([medio, total]) => (
+          {Object.entries(totalesPorMedio).map(([medio, total]) => (
             <span key={medio}>
-              💰 {medio}: <strong>${formatearMoneda(total)}</strong>
-              &nbsp;&nbsp;|&nbsp;&nbsp;
+              💰 {medio}: <strong>${formatearMoneda(total)}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
             </span>
           ))}
-          Total general:{' '}
-          <strong>
-            ${formatearMoneda(gastosFiltrados.reduce((acc, g) => acc + parseFloat(g.importe), 0))}
-          </strong>
+          Total general: <strong>${formatearMoneda(totalGeneral)}</strong>
         </div>
       )}
     </div>

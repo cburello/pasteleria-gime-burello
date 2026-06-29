@@ -1,7 +1,21 @@
 import { useState, useRef, useEffect } from 'react'
 
+// Detecta mobile igual que en Pedidos (768px)
+function useEsMobile() {
+  const [esMobile, setEsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
+  useEffect(() => {
+    function handler() { setEsMobile(window.innerWidth <= 768) }
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  return esMobile
+}
+
 function MenuPrincipal({ paginaActual, onCambiarPagina }) {
-  const [menuAbierto, setMenuAbierto] = useState(null) // 'catalogo' | 'ventas' | 'finanzas' | null
+  const esMobile = useEsMobile()
+  const [menuAbierto, setMenuAbierto] = useState(null)
   const menuRef = useRef(null)
 
   const grupos = [
@@ -24,7 +38,7 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
         { id: 'informes', label: 'Informes' },
       ],
     },
-{
+    {
       id: 'finanzas',
       label: 'Finanzas',
       items: [
@@ -32,11 +46,11 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
         { id: 'gastos', label: 'Gastos' },
         { id: 'ingresos', label: 'Ingresos' },
         { id: 'retiros', label: 'Retiros' },
-        { id: 'resultados', label: 'Resultados' },                
+        { id: 'resultados', label: 'Resultados' },
       ],
-    },  ]
+    },
+  ]
 
-  // Cierra el menú abierto si se hace clic fuera
   useEffect(() => {
     function manejarClicFuera(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -56,11 +70,36 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
     setMenuAbierto(null)
   }
 
-  // Determina si algún item de un grupo es la página actual (para resaltar el grupo)
   function grupoActivo(grupo) {
     return grupo.items.some((item) => item.id === paginaActual)
   }
 
+  // ===== BARRA MOBILE FIJA ABAJO =====
+  if (esMobile) {
+    const itemsMobile = [
+      { id: 'inicio',   label: 'Inicio',   icono: '🏠' },
+      { id: 'pedidos',  label: 'Pedidos',  icono: '📦' },
+      { id: 'gastos',   label: 'Gastos',   icono: '💸' },
+      { id: 'ingresos', label: 'Ingresos', icono: '💰' },
+    ]
+
+    return (
+      <nav className="nav-mobile">
+        {itemsMobile.map((item) => (
+          <button
+            key={item.id}
+            className={`nav-mobile-item ${paginaActual === item.id ? 'activo' : ''}`}
+            onClick={() => onCambiarPagina(item.id)}
+          >
+            <span className="nav-mobile-icono">{item.icono}</span>
+            <span className="nav-mobile-label">{item.label}</span>
+          </button>
+        ))}
+      </nav>
+    )
+  }
+
+  // ===== MENÚ DESKTOP (sin cambios) =====
   return (
     <nav className="app-nav" ref={menuRef}>
       <button

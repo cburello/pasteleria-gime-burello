@@ -4,7 +4,26 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { LOGO_BASE64 } from '../lib/logoBase64'
 
+// Detecta si la pantalla es de tamaño mobile (mismo breakpoint que App.css: 768px).
+// Se recalcula automáticamente si la ventana cambia de tamaño u orientación.
+function useEsMobile() {
+  const [esMobile, setEsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
+
+  useEffect(() => {
+    function manejarResize() {
+      setEsMobile(window.innerWidth <= 768)
+    }
+    window.addEventListener('resize', manejarResize)
+    return () => window.removeEventListener('resize', manejarResize)
+  }, [])
+
+  return esMobile
+}
+
 function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
+  const esMobile = useEsMobile()
   const [pedidos, setPedidos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -161,6 +180,7 @@ function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
     return (
       <DetallePedido
         pedido={pedidoActual}
+        esMobile={esMobile}
         onVolver={() => {
           setVista('lista')
           cargarPedidos()
@@ -169,6 +189,69 @@ function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
     )
   }
 
+  // ===== VISTA MOBILE: lista de pedidos en tarjetas =====
+  if (esMobile) {
+    return (
+      <div className="pedidos-mobile">
+        <div className="pedidos-mobile-header">
+          <h2>Pedidos</h2>
+        </div>
+
+        <div className="campo-buscador">
+          <input
+            type="text"
+            placeholder="🔎 Buscar por cliente..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
+        </div>
+
+        {cargando && <p>Cargando...</p>}
+        {error && <p className="mensaje-error">{error}</p>}
+
+        {!cargando && !error && (
+          <div className="lista-tarjetas">
+            {pedidosFiltrados.length === 0 && <p>No hay pedidos registrados.</p>}
+
+            {pedidosFiltrados.map((p) => (
+              <div key={p.id_pedido} className="tarjeta-pedido" onClick={() => abrirPedido(p)}>
+                <div className="tarjeta-pedido-linea1">
+                  <span className="tarjeta-pedido-cliente">{nombreCliente(p)}</span>
+                  <span className="tarjeta-pedido-id">#{p.id_pedido}</span>
+                </div>
+                <div className="tarjeta-pedido-fecha">
+                  Entrega: {formatearFecha(p.fecha_entrega) || '—'}
+                </div>
+                <div className="tarjeta-pedido-linea2">
+                  <span className="tarjeta-pedido-total">Total ${formatearMoneda(p.total)}</span>
+                  <span className={`tarjeta-pedido-estado ${p.pendiente > 0.01 ? 'pendiente' : 'cobrado'}`}>
+                    {p.pendiente > 0.01 ? `Pendiente $${formatearMoneda(p.pendiente)}` : 'Cobrado'}
+                  </span>
+                </div>
+                <div className="tarjeta-pedido-acciones">
+                  <button
+                    className="btn-link btn-eliminar"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      eliminarPedido(p.id_pedido)
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button className="boton-flotante" onClick={iniciarNuevo} aria-label="Nuevo pedido">
+          +
+        </button>
+      </div>
+    )
+  }
+
+  // ===== VISTA DESKTOP: tabla (sin cambios) =====
   return (
     <div className="modulo">
       <h2>Pedidos</h2>
@@ -239,7 +322,7 @@ function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
   )
 }
 
-function DetallePedido({ pedido, onVolver }) {
+function DetallePedido({ pedido, esMobile, onVolver }) {
   const [clientes, setClientes] = useState([])
   const [textoBuscarCliente, setTextoBuscarCliente] = useState('')
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
@@ -251,6 +334,10 @@ function DetallePedido({ pedido, onVolver }) {
   const [fechaPedido] = useState(pedido.fecha_pedido?.slice(0, 10) || new Date().toISOString().slice(0, 10))
   const [fechaEntrega, setFechaEntrega] = useState(pedido.fecha_entrega?.slice(0, 10) || '')
   const [guardandoCabecera, setGuardandoCabecera] = useState(false)
+
+  // Paso del flujo mobile: 1 = Cliente y fechas, 2 = Agregar item, 3 = Resumen.
+  // Si el pedido ya existe (viene de "Ver/Editar"), arranca directo en el paso 2.
+  const [pasoMobile, setPasoMobile] = useState(pedido.id_pedido ? 2 : 1)
 
   const [lineas, setLineas] = useState([])
   const [cargandoLineas, setCargandoLineas] = useState(true)
@@ -467,12 +554,23 @@ function DetallePedido({ pedido, onVolver }) {
     if (id) {
       const esNuevo = !pedido.id_pedido
       pedido.id_pedido = id
-      alert(esNuevo ? 'Pedido guardado. Ya podés agregar productos/combos y registrar pagos.' : 'Pedido actualizado correctamente')
-      if (esNuevo) {
-        await cargarLineas()
-        await cargarPagos()
-        setCargandoLineas(false)
-        setCargandoPagos(false)
+      if (esMobile) {
+        // En mobile no hace falta el alert: el avance de paso ya confirma visualmente que se guardó.
+        if (esNuevo) {
+          await cargarLineas()
+          await cargarPagos()
+          setCargandoLineas(false)
+          setCargandoPagos(false)
+        }
+        setPasoMobile(2)
+      } else {
+        alert(esNuevo ? 'Pedido guardado. Ya podés agregar productos/combos y registrar pagos.' : 'Pedido actualizado correctamente')
+        if (esNuevo) {
+          await cargarLineas()
+          await cargarPagos()
+          setCargandoLineas(false)
+          setCargandoPagos(false)
+        }
       }
     }
   }
@@ -884,6 +982,358 @@ function DetallePedido({ pedido, onVolver }) {
 
     const nombreArchivo = `Comanda_${(descripcion || 'Cliente').replace(/\s+/g, '_')}.pdf`
     doc.save(nombreArchivo)
+  }
+
+  // ===== VISTA MOBILE: carga de pedido en 3 pasos =====
+  if (esMobile) {
+    const tituloPaso = {
+      1: 'Cliente y fechas',
+      2: 'Agregar productos',
+      3: 'Resumen del pedido',
+    }[pasoMobile]
+
+    return (
+      <div className="pedidos-mobile">
+        <div className="mobile-paso-header">
+          <button
+            onClick={() => {
+              if (pasoMobile === 1) onVolver()
+              else setPasoMobile(pasoMobile - 1)
+            }}
+            aria-label="Volver"
+          >
+            ←
+          </button>
+          <span>
+            {pedido.id_pedido ? `Pedido #${pedido.id_pedido}` : 'Nuevo pedido'} · {tituloPaso}
+          </span>
+        </div>
+
+        <div className="mobile-progreso">
+          <div className={`mobile-progreso-punto ${pasoMobile >= 1 ? 'activo' : ''}`}></div>
+          <div className={`mobile-progreso-punto ${pasoMobile >= 2 ? 'activo' : ''}`}></div>
+          <div className={`mobile-progreso-punto ${pasoMobile >= 3 ? 'activo' : ''}`}></div>
+        </div>
+
+        {/* PASO 1: Cliente y fechas */}
+        {pasoMobile === 1 && (
+          <div>
+            <div className="campos-apilados">
+              <div className="campo" style={{ position: 'relative' }}>
+                <label>Cliente (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="🔎 Buscar cliente o dejar en blanco..."
+                  value={textoBuscarCliente}
+                  onChange={(e) => {
+                    setTextoBuscarCliente(e.target.value)
+                    setClienteSeleccionado(null)
+                    setIdCliente(null)
+                  }}
+                  disabled={!!pedido.id_pedido}
+                />
+                {textoBuscarCliente && !clienteSeleccionado && clientesFiltrados.length > 0 && !pedido.id_pedido && (
+                  <div className="mobile-resultados-busqueda">
+                    {clientesFiltrados.map((c) => (
+                      <div key={c.id_cliente} className="mobile-resultado-item" onClick={() => seleccionarCliente(c)}>
+                        {clienteEsAnonimo(c) ? `— Cliente anónimo (#${c.id_cliente}) —` : c.descripcion}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {(!clienteSeleccionado || clienteEsAnonimo(clienteSeleccionado)) && (
+                <>
+                  <div className="campo">
+                    <label>Nombre (obligatorio)</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Juan Pérez"
+                      value={descripcion}
+                      onChange={(e) => setDescripcion(e.target.value)}
+                      disabled={!!pedido.id_pedido}
+                    />
+                  </div>
+                  <div className="campo">
+                    <label>Domicilio (opcional)</label>
+                    <input
+                      type="text"
+                      value={domicilio}
+                      onChange={(e) => setDomicilio(e.target.value)}
+                      disabled={!!pedido.id_pedido}
+                    />
+                  </div>
+                  <div className="campo">
+                    <label>Teléfono (opcional)</label>
+                    <input
+                      type="text"
+                      value={telefono}
+                      onChange={(e) => setTelefono(e.target.value)}
+                      disabled={!!pedido.id_pedido}
+                    />
+                  </div>
+                </>
+              )}
+
+              {clienteSeleccionado && !clienteEsAnonimo(clienteSeleccionado) && (
+                <p className="ayuda-vigencia">
+                  📍 {clienteSeleccionado.domicilio || 'Sin domicilio'} &nbsp;|&nbsp; 📞 {clienteSeleccionado.telefono || 'Sin teléfono'}
+                </p>
+              )}
+
+              <div className="campo">
+                <label>Fecha de pedido</label>
+                <input type="date" value={fechaPedido} disabled />
+              </div>
+
+              <div className="campo">
+                <label>Fecha de entrega</label>
+                <input type="date" value={fechaEntrega} onChange={(e) => setFechaEntrega(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="mobile-acciones-finales">
+              <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardandoCabecera}>
+                {guardandoCabecera
+                  ? 'Guardando...'
+                  : pedido.id_pedido
+                  ? 'Guardar cambios y continuar'
+                  : 'Guardar y agregar productos'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PASO 2: Agregar productos/combos */}
+        {pasoMobile === 2 && (
+          <div>
+            <div className="mobile-selector-tipo">
+              <button
+                className={tipoItem === 'producto' ? 'activo' : ''}
+                onClick={() => {
+                  setTipoItem('producto')
+                  setItemSeleccionado(null)
+                  setTextoBuscarItem('')
+                }}
+              >
+                Producto
+              </button>
+              <button
+                className={tipoItem === 'combo' ? 'activo' : ''}
+                onClick={() => {
+                  setTipoItem('combo')
+                  setItemSeleccionado(null)
+                  setTextoBuscarItem('')
+                }}
+              >
+                Combo
+              </button>
+            </div>
+
+            <div className="campo" style={{ position: 'relative', marginBottom: '6px' }}>
+              <input
+                type="text"
+                placeholder={`🔎 Buscar ${tipoItem}...`}
+                value={textoBuscarItem}
+                onChange={(e) => {
+                  setTextoBuscarItem(e.target.value)
+                  setItemSeleccionado(null)
+                }}
+              />
+              {textoBuscarItem && !itemSeleccionado && itemsFiltrados.length > 0 && (
+                <div className="mobile-resultados-busqueda">
+                  {itemsFiltrados.map((i) => (
+                    <div
+                      key={tipoItem === 'producto' ? i.id_producto : i.id_combo}
+                      className="mobile-resultado-item"
+                      onClick={() => seleccionarItem(i)}
+                    >
+                      {i.descripcion}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {itemSeleccionado && !buscandoPrecio && (
+              <p className="mobile-aviso-precio">
+                💡 Precio sugerido (vigente): ${formatearMoneda(precioRealItem)}
+              </p>
+            )}
+
+            <label style={{ fontSize: '12px', color: '#8A6A66', fontWeight: 500 }}>Cantidad</label>
+            <div className="mobile-stepper">
+              <button
+                onClick={() => setCantidadItem(String(Math.max(1, parseFloat(cantidadItem || '1') - 1)))}
+                aria-label="Restar"
+              >
+                −
+              </button>
+              <span>{cantidadItem}</span>
+              <button
+                onClick={() => setCantidadItem(String(parseFloat(cantidadItem || '0') + 1))}
+                aria-label="Sumar"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="campo" style={{ marginBottom: '14px' }}>
+              <label>Precio de venta</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={precioVentaItem}
+                onChange={(e) => setPrecioVentaItem(e.target.value)}
+                disabled={buscandoPrecio}
+              />
+            </div>
+
+            <div className="mobile-acciones-finales" style={{ marginBottom: '6px' }}>
+              <button className="btn-primario" onClick={agregarLinea}>
+                + Agregar a la lista
+              </button>
+            </div>
+
+            {!cargandoLineas && lineas.length > 0 && (
+              <div className="mobile-items-agregados">
+                {lineas.map((l) => (
+                  <div key={l.secuencia} className="mobile-item-agregado">
+                    <span>
+                      {l.cantidad} x {descripcionLinea(l)}
+                    </span>
+                    <span>
+                      ${formatearMoneda(parseFloat(l.precio_venta) * parseFloat(l.cantidad))}
+                      <button onClick={() => quitarLinea(l.secuencia)}>Quitar</button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mobile-acciones-finales" style={{ marginTop: '18px' }}>
+              <button className="btn-secundario" onClick={() => setPasoMobile(3)}>
+                Terminar pedido →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PASO 3: Resumen + pago + comanda */}
+        {pasoMobile === 3 && (
+          <div>
+            <div className="mobile-resumen-card">
+              <div className="nombre">
+                {clienteSeleccionado && !clienteEsAnonimo(clienteSeleccionado)
+                  ? clienteSeleccionado.descripcion
+                  : descripcion || '— Cliente anónimo —'}
+              </div>
+              <div className="detalle">Entrega: {formatearFecha(fechaEntrega) || '—'}</div>
+            </div>
+
+            {lineas.length > 0 && (
+              <div className="mobile-items-agregados" style={{ marginBottom: '6px' }}>
+                {lineas.map((l) => (
+                  <div key={l.secuencia} className="mobile-item-agregado">
+                    <span>
+                      {l.cantidad} x {descripcionLinea(l)}
+                    </span>
+                    <span>${formatearMoneda(parseFloat(l.precio_venta) * parseFloat(l.cantidad))}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mobile-total-final">
+              <span>Total</span>
+              <span>${formatearMoneda(totalPedido)}</span>
+            </div>
+
+            {lineas.length > 0 && (
+              <div className="mobile-acciones-finales" style={{ marginBottom: '18px' }}>
+                <button className="btn-secundario" onClick={generarComanda}>
+                  🧾 Generar Comanda (PDF)
+                </button>
+              </div>
+            )}
+
+            <div className="subseccion">
+              <h3>Pagos</h3>
+
+              {saldoPendiente <= 0 ? (
+                <div className="aviso-ok">✅ Este pedido está totalmente pagado.</div>
+              ) : (
+                <div>
+                  <div className="campos-apilados">
+                    <div className="campo">
+                      <label>Tipo</label>
+                      <select value={tipoPago} onChange={(e) => manejarCambioTipoPago(e.target.value)}>
+                        <option value="SE">Seña</option>
+                        <option value="PP">Pago Parcial</option>
+                        <option value="PT">Saldo Restante</option>
+                      </select>
+                    </div>
+                    <div className="campo">
+                      <label>Importe</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={importePago}
+                        onChange={(e) => setImportePago(e.target.value)}
+                      />
+                    </div>
+                    <div className="campo">
+                      <label>Medio de pago</label>
+                      <select value={medioPago} onChange={(e) => setMedioPago(e.target.value)}>
+                        {mediosPago.map((m) => (
+                          <option key={m.id_medio_pago} value={m.descripcion}>
+                            {m.descripcion}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mobile-acciones-finales">
+                    <button className="btn-primario" onClick={agregarPago}>
+                      + Registrar pago
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!cargandoPagos && pagos.length > 0 && (
+                <div className="mobile-items-agregados" style={{ marginTop: '14px' }}>
+                  {pagos.map((p) => (
+                    <div key={p.secuencia} className="mobile-item-agregado">
+                      <span>
+                        {nombreTipoPago(p.tipo)} · {p.medio_pago}
+                      </span>
+                      <span>
+                        {formatearFecha(p.fecha_pago)} · ${formatearMoneda(p.importe)}
+                        <button onClick={() => eliminarPago(p.secuencia)}>Eliminar</button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className={saldoPendiente > 0 ? 'aviso-similar' : 'aviso-ok'} style={{ marginTop: '14px' }}>
+                💰 Pagado: ${formatearMoneda(totalPagado)} &nbsp;|&nbsp; Saldo: <strong>${formatearMoneda(saldoPendiente)}</strong>
+              </div>
+            </div>
+
+            <div className="mobile-acciones-finales" style={{ marginTop: '18px' }}>
+              <button className="btn-secundario" onClick={onVolver}>
+                Listo, volver a pedidos
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (

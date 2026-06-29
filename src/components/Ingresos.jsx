@@ -1,7 +1,21 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+function useEsMobile() {
+  const [esMobile, setEsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
+  useEffect(() => {
+    function handler() { setEsMobile(window.innerWidth <= 768) }
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  return esMobile
+}
+
 function Ingresos() {
+  const esMobile = useEsMobile()
+
   const [ingresos, setIngresos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -18,6 +32,7 @@ function Ingresos() {
   const [guardando, setGuardando] = useState(false)
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
+  const [modoMobile, setModoMobile] = useState('lista') // 'lista' | 'form'
 
   function primerDiaDelMes() {
     const hoy = new Date()
@@ -118,6 +133,7 @@ function Ingresos() {
     setImporte(ingreso.importe)
     setIdMedioPago(ingreso.id_medio_pago)
     setObservaciones(ingreso.observaciones || '')
+    if (esMobile) setModoMobile('form')
   }
 
   async function ajustarFechaSiCerrada(fechaStr) {
@@ -163,9 +179,7 @@ function Ingresos() {
     }
 
     const fechaAjustada = await ajustarFechaSiCerrada(fecha)
-    if (fechaAjustada !== fecha) {
-      setFecha(fechaAjustada)
-    }
+    if (fechaAjustada !== fecha) setFecha(fechaAjustada)
 
     setGuardando(true)
 
@@ -189,6 +203,7 @@ function Ingresos() {
     } else {
       limpiarFormulario()
       cargarIngresos()
+      if (esMobile) setModoMobile('lista')
     }
 
     setGuardando(false)
@@ -196,7 +211,7 @@ function Ingresos() {
 
   async function eliminar(ingreso) {
     if (ingreso.id_pedido) {
-      alert('Este ingreso fue generado automáticamente desde un pago de Pedidos y no se puede eliminar aquí. Eliminá el pago desde el módulo Pedidos si corresponde.')
+      alert('Este ingreso fue generado automáticamente desde un pago de Pedidos y no se puede eliminar aquí.')
       return
     }
 
@@ -219,6 +234,182 @@ function Ingresos() {
       )
     : ingresos
 
+  const totalesPorMedio = ingresosFiltrados.reduce((acc, i) => {
+    const medio = i.medios_pagos?.descripcion || i.id_medio_pago
+    acc[medio] = (acc[medio] || 0) + parseFloat(i.importe)
+    return acc
+  }, {})
+
+  const totalGeneral = ingresosFiltrados.reduce((acc, i) => acc + parseFloat(i.importe), 0)
+
+  // ===== VISTA MOBILE =====
+  if (esMobile) {
+    if (modoMobile === 'form') {
+      return (
+        <div className="pedidos-mobile">
+          <div className="mobile-paso-header">
+            <button onClick={() => { limpiarFormulario(); setModoMobile('lista') }}>←</button>
+            <span>{editandoId ? 'Editar ingreso' : 'Nuevo ingreso'}</span>
+          </div>
+
+          <form onSubmit={guardar}>
+            <div className="campos-apilados">
+              <div className="campo">
+                <label>Concepto</label>
+                <select value={idConcepto} onChange={(e) => setIdConcepto(e.target.value)}>
+                  <option value="">Seleccionar...</option>
+                  {conceptos.map((c) => (
+                    <option key={c.id_concepto} value={c.id_concepto}>{c.descripcion}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="campo">
+                <label>Fecha</label>
+                <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              </div>
+
+              <div className="campo">
+                <label>Importe</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={importe}
+                  onChange={(e) => setImporte(e.target.value)}
+                />
+              </div>
+
+              <div className="campo">
+                <label>Medio de pago</label>
+                <select value={idMedioPago} onChange={(e) => setIdMedioPago(e.target.value)}>
+                  <option value="">Seleccionar...</option>
+                  {mediosPago.map((m) => (
+                    <option key={m.id_medio_pago} value={m.id_medio_pago}>{m.descripcion}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="campo">
+                <label>Observaciones</label>
+                <input
+                  type="text"
+                  placeholder="Observaciones libres"
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mobile-acciones-finales">
+              <button type="submit" className="btn-primario" disabled={guardando}>
+                {guardando ? 'Guardando...' : editandoId ? 'Actualizar ingreso' : 'Guardar ingreso'}
+              </button>
+              {editandoId && (
+                <button type="button" className="btn-secundario" onClick={() => { limpiarFormulario(); setModoMobile('lista') }}>
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      )
+    }
+
+    // Lista en tarjetas
+    return (
+      <div className="pedidos-mobile">
+        <div className="pedidos-mobile-header">
+          <h2>Ingresos</h2>
+        </div>
+
+        <p className="ayuda-vigencia" style={{ marginBottom: '12px', fontSize: '12px' }}>
+          💡 Los ingresos por Pedidos se generan automáticamente. Acá solo se cargan ingresos manuales.
+        </p>
+
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <div className="campo" style={{ flex: 1 }}>
+            <label>Desde</label>
+            <input type="date" value={fechaDesdeFiltro} onChange={(e) => manejarCambioFechaDesde(e.target.value)} />
+          </div>
+          <div className="campo" style={{ flex: 1 }}>
+            <label>Hasta</label>
+            <input type="date" value={fechaHastaFiltro} onChange={(e) => setFechaHastaFiltro(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button className="btn-primario" style={{ padding: '10px 12px', fontSize: '13px' }} onClick={cargarIngresos}>
+              🔎
+            </button>
+          </div>
+        </div>
+
+        <div className="campo-buscador">
+          <input
+            type="text"
+            placeholder="🔎 Buscar por concepto u observación..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
+        </div>
+
+        {cargando && <p>Cargando...</p>}
+        {error && <p className="mensaje-error">{error}</p>}
+
+        {!cargando && !error && (
+          <div className="lista-tarjetas">
+            {ingresosFiltrados.length === 0 && <p>No hay ingresos en ese período.</p>}
+
+            {ingresosFiltrados.map((i) => (
+              <div
+                key={i.id_ingreso}
+                className="tarjeta-pedido"
+                onClick={() => iniciarEdicion(i)}
+              >
+                <div className="tarjeta-pedido-linea1">
+                  <span className="tarjeta-pedido-cliente">{i.conceptos?.descripcion}</span>
+                  <span className="tarjeta-pedido-id">{formatearFecha(i.fecha)}</span>
+                </div>
+                {i.observaciones && (
+                  <div className="tarjeta-pedido-fecha">{i.observaciones}</div>
+                )}
+                <div className="tarjeta-pedido-linea2">
+                  <span className="tarjeta-pedido-total">
+                    {i.id_pedido ? `Pedido #${i.id_pedido}` : i.medios_pagos?.descripcion}
+                  </span>
+                  <span className="tarjeta-pedido-estado cobrado">${formatearMoneda(i.importe)}</span>
+                </div>
+                {!i.id_pedido && (
+                  <div className="tarjeta-pedido-acciones">
+                    <button
+                      className="btn-link btn-eliminar"
+                      onClick={(e) => { e.stopPropagation(); eliminar(i) }}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {ingresosFiltrados.length > 0 && (
+              <div className="costo-total" style={{ marginBottom: '6px' }}>
+                {Object.entries(totalesPorMedio).map(([medio, total]) => (
+                  <div key={medio}>💰 {medio}: <strong>${formatearMoneda(total)}</strong></div>
+                ))}
+                <div style={{ marginTop: '6px' }}>Total: <strong>${formatearMoneda(totalGeneral)}</strong></div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <button className="boton-flotante" onClick={() => { limpiarFormulario(); setModoMobile('form') }} aria-label="Nuevo ingreso">
+          +
+        </button>
+      </div>
+    )
+  }
+
+  // ===== VISTA DESKTOP (sin cambios) =====
   return (
     <div className="modulo">
       <h2>Ingresos</h2>
@@ -230,24 +421,14 @@ function Ingresos() {
       <div className="formulario formulario-costos" style={{ marginBottom: '20px' }}>
         <div className="campo">
           <label>Desde</label>
-          <input
-            type="date"
-            value={fechaDesdeFiltro}
-            onChange={(e) => manejarCambioFechaDesde(e.target.value)}
-          />
+          <input type="date" value={fechaDesdeFiltro} onChange={(e) => manejarCambioFechaDesde(e.target.value)} />
         </div>
         <div className="campo">
           <label>Hasta</label>
-          <input
-            type="date"
-            value={fechaHastaFiltro}
-            onChange={(e) => setFechaHastaFiltro(e.target.value)}
-          />
+          <input type="date" value={fechaHastaFiltro} onChange={(e) => setFechaHastaFiltro(e.target.value)} />
         </div>
         <div className="campo-acciones">
-          <button type="button" className="btn-primario" onClick={cargarIngresos}>
-            🔎 Consultar
-          </button>
+          <button type="button" className="btn-primario" onClick={cargarIngresos}>🔎 Consultar</button>
         </div>
       </div>
 
@@ -257,9 +438,7 @@ function Ingresos() {
           <select value={idConcepto} onChange={(e) => setIdConcepto(e.target.value)}>
             <option value="">Seleccionar...</option>
             {conceptos.map((c) => (
-              <option key={c.id_concepto} value={c.id_concepto}>
-                {c.descripcion}
-              </option>
+              <option key={c.id_concepto} value={c.id_concepto}>{c.descripcion}</option>
             ))}
           </select>
         </div>
@@ -285,9 +464,7 @@ function Ingresos() {
           <select value={idMedioPago} onChange={(e) => setIdMedioPago(e.target.value)}>
             <option value="">Seleccionar...</option>
             {mediosPago.map((m) => (
-              <option key={m.id_medio_pago} value={m.id_medio_pago}>
-                {m.descripcion}
-              </option>
+              <option key={m.id_medio_pago} value={m.id_medio_pago}>{m.descripcion}</option>
             ))}
           </select>
         </div>
@@ -307,9 +484,7 @@ function Ingresos() {
             {guardando ? 'Guardando...' : editandoId ? 'Actualizar' : 'Agregar'}
           </button>
           {editandoId && (
-            <button type="button" className="btn-secundario" onClick={limpiarFormulario}>
-              Cancelar
-            </button>
+            <button type="button" className="btn-secundario" onClick={limpiarFormulario}>Cancelar</button>
           )}
         </div>
       </form>
@@ -341,9 +516,7 @@ function Ingresos() {
             </thead>
             <tbody>
               {ingresosFiltrados.length === 0 && (
-                <tr>
-                  <td colSpan="6">No hay ingresos registrados.</td>
-                </tr>
+                <tr><td colSpan="6">No hay ingresos registrados.</td></tr>
               )}
               {ingresosFiltrados.map((i) => (
                 <tr key={i.id_ingreso}>
@@ -353,12 +526,8 @@ function Ingresos() {
                   <td>{i.medios_pagos?.descripcion || i.id_medio_pago}</td>
                   <td>{i.id_pedido ? `Pedido #${i.id_pedido}` : 'Manual'}</td>
                   <td>
-                    <button className="btn-link" onClick={() => iniciarEdicion(i)}>
-                      Editar
-                    </button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminar(i)}>
-                      Eliminar
-                    </button>
+                    <button className="btn-link" onClick={() => iniciarEdicion(i)}>Editar</button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminar(i)}>Eliminar</button>
                   </td>
                 </tr>
               ))}
@@ -369,22 +538,12 @@ function Ingresos() {
 
       {!cargando && !error && ingresosFiltrados.length > 0 && (
         <div className="costo-total">
-          {Object.entries(
-            ingresosFiltrados.reduce((acc, i) => {
-              const medio = i.medios_pagos?.descripcion || i.id_medio_pago
-              acc[medio] = (acc[medio] || 0) + parseFloat(i.importe)
-              return acc
-            }, {})
-          ).map(([medio, total]) => (
+          {Object.entries(totalesPorMedio).map(([medio, total]) => (
             <span key={medio}>
-              💰 {medio}: <strong>${formatearMoneda(total)}</strong>
-              &nbsp;&nbsp;|&nbsp;&nbsp;
+              💰 {medio}: <strong>${formatearMoneda(total)}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
             </span>
           ))}
-          Total general:{' '}
-          <strong>
-            ${formatearMoneda(ingresosFiltrados.reduce((acc, i) => acc + parseFloat(i.importe), 0))}
-          </strong>
+          Total general: <strong>${formatearMoneda(totalGeneral)}</strong>
         </div>
       )}
     </div>

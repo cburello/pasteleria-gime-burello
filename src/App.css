@@ -741,3 +741,470 @@ body {
   font-size: 12px;
   color: #43413A;
 }
+
+/* ============================================= */
+/* MODO MOBILE — PEDIDOS (tarjetas + carga en pasos) */
+/* Se activa solo debajo de 768px de ancho.        */
+/* No afecta ninguna clase usada en desktop.       */
+/* ============================================= */
+
+.pedidos-mobile {
+  position: relative;
+  min-height: 70vh;
+}
+
+.pedidos-mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.pedidos-mobile-header h2 {
+  font-family: 'Playfair Display', serif;
+  color: #E8765C;
+  font-size: 22px;
+}
+
+/* Buscador (reutiliza estructura de campo-buscador pero sin margen extra) */
+.pedidos-mobile .campo-buscador {
+  margin-bottom: 14px;
+}
+
+/* Lista de tarjetas */
+.lista-tarjetas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 110px; /* más aire para que el botón flotante no tape la última tarjeta */
+}
+
+.tarjeta-pedido {
+  background-color: #FFFFFF;
+  border: 1px solid #F5E8E4;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.tarjeta-pedido:active {
+  border-color: #E8D5CF;
+  background-color: #FFFBFA;
+}
+
+.tarjeta-pedido-linea1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tarjeta-pedido-cliente {
+  font-weight: 600;
+  font-size: 15px;
+  color: #4A2C2A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tarjeta-pedido-id {
+  font-size: 12px;
+  color: #AAAAAA;
+  flex-shrink: 0;
+}
+
+.tarjeta-pedido-fecha {
+  font-size: 12px;
+  color: #8A6A66;
+  margin-top: 2px;
+}
+
+.tarjeta-pedido-linea2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+}
+
+.tarjeta-pedido-total {
+  font-size: 13px;
+  color: #8A6A66;
+}
+
+.tarjeta-pedido-estado {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.tarjeta-pedido-estado.pendiente {
+  background-color: #FDEDEB;
+  color: #C0392B;
+}
+
+.tarjeta-pedido-estado.cobrado {
+  background-color: #DFF5E1;
+  color: #2D6A35;
+}
+
+.tarjeta-pedido-acciones {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  gap: 16px;
+}
+
+/* Botón flotante "+" para nuevo pedido */
+.boton-flotante {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #E8765C;
+  color: #FFFFFF;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(232, 118, 92, 0.45);
+  cursor: pointer;
+  z-index: 30;
+}
+
+.boton-flotante:active {
+  background-color: #D4624A;
+}
+
+/* Encabezado de pantalla de detalle/carga mobile (con flecha volver) */
+.mobile-paso-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.mobile-paso-header button {
+  background: none;
+  border: none;
+  color: #E8765C;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.mobile-paso-header span {
+  font-weight: 600;
+  font-size: 16px;
+  color: #4A2C2A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Barra de progreso de 3 pasos */
+.mobile-progreso {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0 18px;
+}
+
+.mobile-progreso-punto {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background-color: #F0DCD3;
+}
+
+.mobile-progreso-punto.activo {
+  background-color: #E8765C;
+}
+
+/* Campos apilados (un campo por fila, en vez de .formulario en línea) */
+.campos-apilados {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.campos-apilados .campo {
+  width: 100%;
+}
+
+.campos-apilados .campo input,
+.campos-apilados .campo select {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+}
+
+/* Resultados de búsqueda como lista de tarjetas (cliente / producto) */
+.mobile-resultados-busqueda {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.mobile-resultado-item {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background-color: #FFFFFF;
+  border: 1px solid #F0DCD3;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.mobile-resultado-item.seleccionado {
+  background-color: #FBE4DD;
+  border-color: #E8765C;
+  color: #993C1D;
+  font-weight: 500;
+}
+
+/* Selector tipo producto/combo (dos botones grandes) */
+.mobile-selector-tipo {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mobile-selector-tipo button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #E8D5CF;
+  background-color: #FFFFFF;
+  color: #8A6A66;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.mobile-selector-tipo button.activo {
+  background-color: #FBE4DD;
+  border-color: #E8765C;
+  color: #993C1D;
+  font-weight: 600;
+}
+
+/* Selector de cantidad +/- grande, fácil de tocar */
+.mobile-stepper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 6px 0 16px;
+}
+
+.mobile-stepper button {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid #E8D5CF;
+  background-color: #FFFFFF;
+  color: #E8765C;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.mobile-stepper button:active {
+  background-color: #FBE4DD;
+}
+
+.mobile-stepper span {
+  font-size: 20px;
+  font-weight: 600;
+  min-width: 36px;
+  text-align: center;
+  color: #4A2C2A;
+}
+
+/* Lista de items ya agregados al pedido (en el paso "agregar item") */
+.mobile-items-agregados {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.mobile-item-agregado {
+  display: flex;
+  justify-content: space-between;
+  background-color: #FFF5F2;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #4A2C2A;
+}
+
+.mobile-item-agregado button {
+  background: none;
+  border: none;
+  color: #C0392B;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+/* Tarjeta resumen (cliente + fechas) en el paso de resumen */
+.mobile-resumen-card {
+  background-color: #FFFFFF;
+  border: 1px solid #F5E8E4;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.mobile-resumen-card .nombre {
+  font-weight: 600;
+  font-size: 15px;
+  color: #4A2C2A;
+  margin-bottom: 4px;
+}
+
+.mobile-resumen-card .detalle {
+  font-size: 12px;
+  color: #8A6A66;
+}
+
+.mobile-total-final {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 600;
+  font-size: 17px;
+  color: #4A2C2A;
+  border-top: 1px solid #F5E8E4;
+  padding-top: 12px;
+  margin: 4px 0 18px;
+}
+
+/* Botones de ancho completo, apilados, para todas las pantallas mobile */
+.mobile-acciones-finales {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-acciones-finales button {
+  width: 100%;
+  padding: 13px;
+  font-size: 15px;
+}
+
+/* Aviso compacto reutilizando los colores de aviso-ok/aviso-similar */
+.mobile-aviso-precio {
+  background-color: #DFF5E1;
+  color: #2D6A35;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 768px) {
+  /* Achica el padding general del contenido en pantallas chicas */
+  .app-content {
+    padding: 16px 12px;
+  }
+
+  .modulo {
+    padding: 16px;
+  }
+
+  /* El header de la app se acomoda en una sola columna si hace falta */
+  .app-header {
+    padding: 14px 16px;
+  }
+
+  .app-header h1 {
+    font-size: 20px;
+  }
+
+  .app-header h1 span {
+    font-size: 13px;
+  }
+}
+/* ============================================= */
+/* BARRA DE NAVEGACIÓN MOBILE (fija abajo)        */
+/* ============================================= */
+
+@media (max-width: 768px) {
+  /* Oculta el menú de navegación desktop en mobile */
+  .app-nav {
+    display: none;
+  }
+
+  /* Espacio para que el contenido no quede tapado por la barra */
+  .app-content {
+    padding-bottom: 80px;
+  }
+}
+
+.nav-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .nav-mobile {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    background-color: #FFFFFF;
+    border-top: 1px solid #F0D9D2;
+    z-index: 50;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.07);
+  }
+}
+
+.nav-mobile-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #B09A95;
+  font-family: 'Poppins', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.nav-mobile-item.activo {
+  color: #E8765C;
+}
+
+.nav-mobile-icono {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.nav-mobile-label {
+  font-size: 10px;
+  font-weight: 500;
+}
