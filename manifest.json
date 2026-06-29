@@ -1,0 +1,24 @@
+{
+  "name": "Gime Burello Pastelería",
+  "short_name": "Gime Pastelería",
+  "description": "Sistema de gestión — Gime Burello Pastelería",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF5F2",
+  "theme_color": "#E8765C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
