@@ -84,7 +84,7 @@ function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
     const { data, error } = await supabase
       .from('pedidos')
       .select('*, clientes(descripcion, cliente_anonimo)')
-      .order('id_pedido', { ascending: false })
+      .order('fecha_entrega', { ascending: false })
 
     if (error) {
       setError('Error al cargar los pedidos: ' + error.message)
