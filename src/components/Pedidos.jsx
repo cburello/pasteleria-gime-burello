@@ -1108,6 +1108,22 @@ function DetallePedido({ pedido, esMobile, onVolver }) {
         {/* PASO 2: Agregar productos/combos */}
         {pasoMobile === 2 && (
           <div>
+            {!cargandoPagos && pagos.length > 0 && (
+              <div
+                className={saldoPendiente > 0.01 ? 'aviso-similar' : 'aviso-ok'}
+                style={{ marginBottom: '16px', cursor: 'pointer' }}
+                onClick={() => setPasoMobile(3)}
+              >
+                💰 Pagado: ${formatearMoneda(totalPagado)} de ${formatearMoneda(totalPedido)}
+                {saldoPendiente > 0.01 ? (
+                  <> &nbsp;|&nbsp; Pendiente: <strong>${formatearMoneda(saldoPendiente)}</strong></>
+                ) : (
+                  <> &nbsp;· Pedido cobrado ✅</>
+                )}
+                <span style={{ float: 'right', fontSize: '12px', textDecoration: 'underline' }}>Ver pagos →</span>
+              </div>
+            )}
+
             <div className="mobile-selector-tipo">
               <button
                 className={tipoItem === 'producto' ? 'activo' : ''}
