@@ -185,97 +185,77 @@ function Dashboard({ onAbrirPedido }) {
     )
   }
 
-  // ===== VISTA DESKTOP (sin cambios) =====
+  // ===== VISTA DESKTOP (rediseñada: totales centrados + filas con estado de pago) =====
   return (
     <div className="modulo">
       <h2>Inicio</h2>
 
       <div className="subseccion">
-        <h3>Resumen del mes en curso</h3>
-        <div className="simulador-precio">
-          <div className="simulador-item">
-            <span>Pedidos del mes</span>
-            <strong>{resumenMes.cantidad}</strong>
+        <h3 className="dashboard-subtitulo">Resumen del mes en curso</h3>
+        <div className="dashboard-resumen-grid">
+          <div className="dashboard-resumen-item">
+            <span className="dashboard-resumen-label">Pedidos del mes</span>
+            <span className="dashboard-resumen-valor">{resumenMes.cantidad}</span>
           </div>
-          <div className="simulador-item">
-            <span>Total facturado</span>
-            <strong>${formatearMoneda(resumenMes.totalFacturado)}</strong>
+          <div className="dashboard-resumen-item con-borde">
+            <span className="dashboard-resumen-label">Total facturado</span>
+            <span className="dashboard-resumen-valor">${formatearMoneda(resumenMes.totalFacturado)}</span>
           </div>
-          <div className="simulador-item">
-            <span>Total cobrado</span>
-            <strong>${formatearMoneda(resumenMes.totalCobrado)}</strong>
+          <div className="dashboard-resumen-item">
+            <span className="dashboard-resumen-label">Total cobrado</span>
+            <span className="dashboard-resumen-valor cobrado">${formatearMoneda(resumenMes.totalCobrado)}</span>
           </div>
         </div>
       </div>
 
       <div className="subseccion">
-        <h3>Próximos a entregar (7 días)</h3>
+        <h3 className="dashboard-subtitulo">Próximos a entregar (7 días)</h3>
         {proximosEntregar.length === 0 ? (
           <p className="aviso-ok">✅ No tenés entregas programadas para los próximos 7 días.</p>
         ) : (
-          <div className="tabla-wrapper">
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Fecha entrega</th>
-                  <th>Cliente</th>
-                  <th>Total</th>
-                  <th>Saldo</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {proximosEntregar.map((p) => (
-                  <tr key={p.id_pedido}>
-                    <td>{formatearFecha(p.fecha_entrega)}</td>
-                    <td>{nombreCliente(p)}</td>
-                    <td>${formatearMoneda(p.total)}</td>
-                    <td>${formatearMoneda(p.saldo)}</td>
-                    <td>
-                      <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
-                        Ver pedido
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="dashboard-filas">
+            {proximosEntregar.map((p) => (
+              <div key={p.id_pedido} className="dashboard-fila">
+                <div className="dashboard-fila-principal">
+                  <span className="dashboard-fila-fecha">{formatearFecha(p.fecha_entrega)}</span>
+                  <span className="dashboard-fila-cliente">{nombreCliente(p)}</span>
+                </div>
+                <span className="dashboard-fila-monto">Total ${formatearMoneda(p.total)}</span>
+                <span className={`dashboard-fila-monto ${p.saldo > 0.01 ? 'pendiente' : 'cobrado'}`}>
+                  Saldo ${formatearMoneda(p.saldo)}
+                </span>
+                <span className={`tarjeta-pedido-estado ${p.saldo > 0.01 ? 'pendiente' : 'cobrado'}`}>
+                  {p.saldo > 0.01 ? 'Pendiente' : 'Cobrado'}
+                </span>
+                <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
+                  Ver pedido
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       <div className="subseccion">
-        <h3>Pedidos con saldo pendiente</h3>
+        <h3 className="dashboard-subtitulo">Pedidos con saldo pendiente</h3>
         {conSaldoPendiente.length === 0 ? (
           <p className="aviso-ok">✅ No hay pedidos con saldo pendiente.</p>
         ) : (
-          <div className="tabla-wrapper">
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Fecha pedido</th>
-                  <th>Cliente</th>
-                  <th>Total</th>
-                  <th>Saldo pendiente</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {conSaldoPendiente.map((p) => (
-                  <tr key={p.id_pedido}>
-                    <td>{formatearFecha(p.fecha_pedido)}</td>
-                    <td>{nombreCliente(p)}</td>
-                    <td>${formatearMoneda(p.total)}</td>
-                    <td style={{ color: '#C0392B', fontWeight: 600 }}>${formatearMoneda(p.saldo)}</td>
-                    <td>
-                      <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
-                        Ver pedido
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="dashboard-filas">
+            {conSaldoPendiente.map((p) => (
+              <div key={p.id_pedido} className="dashboard-fila">
+                <div className="dashboard-fila-principal">
+                  <span className="dashboard-fila-fecha">{formatearFecha(p.fecha_pedido)}</span>
+                  <span className="dashboard-fila-cliente">{nombreCliente(p)}</span>
+                </div>
+                <span className="dashboard-fila-monto">Total ${formatearMoneda(p.total)}</span>
+                <span className="dashboard-fila-monto pendiente">Saldo ${formatearMoneda(p.saldo)}</span>
+                <span className="tarjeta-pedido-estado pendiente">Pendiente</span>
+                <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
+                  Ver pedido
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
