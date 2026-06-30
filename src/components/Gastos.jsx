@@ -13,6 +13,16 @@ function useEsMobile() {
   return esMobile
 }
 
+// Devuelve la fecha de HOY en formato YYYY-MM-DD usando el huso horario local
+// (toISOString() convierte a UTC y puede adelantar/atrasar un día cerca de medianoche).
+function fechaLocalHoy() {
+  const hoy = new Date()
+  const anio = hoy.getFullYear()
+  const mes = String(hoy.getMonth() + 1).padStart(2, '0')
+  const dia = String(hoy.getDate()).padStart(2, '0')
+  return `${anio}-${mes}-${dia}`
+}
+
 function Gastos() {
   const esMobile = useEsMobile()
 
@@ -25,7 +35,7 @@ function Gastos() {
 
   const [editandoId, setEditandoId] = useState(null)
   const [idConcepto, setIdConcepto] = useState('')
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
+  const [fecha, setFecha] = useState(fechaLocalHoy())
   const [importe, setImporte] = useState('')
   const [idMedioPago, setIdMedioPago] = useState('')
   const [mediosPago, setMediosPago] = useState([])
@@ -105,7 +115,7 @@ function Gastos() {
   function limpiarFormulario() {
     setEditandoId(null)
     setIdConcepto('')
-    setFecha(new Date().toISOString().slice(0, 10))
+    setFecha(fechaLocalHoy())
     setImporte('')
     setIdMedioPago('')
     setComprobante('')

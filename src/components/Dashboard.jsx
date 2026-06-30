@@ -1,7 +1,20 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+function useEsMobile() {
+  const [esMobile, setEsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
+  useEffect(() => {
+    function handler() { setEsMobile(window.innerWidth <= 768) }
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  return esMobile
+}
+
 function Dashboard({ onAbrirPedido }) {
+  const esMobile = useEsMobile()
   const [cargando, setCargando] = useState(true)
   const [proximosEntregar, setProximosEntregar] = useState([])
   const [conSaldoPendiente, setConSaldoPendiente] = useState([])
@@ -95,6 +108,84 @@ function Dashboard({ onAbrirPedido }) {
     )
   }
 
+  // ===== VISTA MOBILE: tarjetas en vez de tablas =====
+  if (esMobile) {
+    return (
+      <div className="pedidos-mobile">
+        <div className="pedidos-mobile-header">
+          <h2>Inicio</h2>
+        </div>
+
+        <div className="mobile-resumen-card">
+          <div className="nombre" style={{ marginBottom: '8px' }}>Resumen del mes</div>
+          <div className="tarjeta-pedido-linea2" style={{ marginTop: 0 }}>
+            <span className="tarjeta-pedido-total">Pedidos del mes</span>
+            <span style={{ fontWeight: 600 }}>{resumenMes.cantidad}</span>
+          </div>
+          <div className="tarjeta-pedido-linea2">
+            <span className="tarjeta-pedido-total">Total facturado</span>
+            <span style={{ fontWeight: 600 }}>${formatearMoneda(resumenMes.totalFacturado)}</span>
+          </div>
+          <div className="tarjeta-pedido-linea2">
+            <span className="tarjeta-pedido-total">Total cobrado</span>
+            <span style={{ fontWeight: 600, color: '#2D6A35' }}>${formatearMoneda(resumenMes.totalCobrado)}</span>
+          </div>
+        </div>
+
+        <h3 style={{ fontSize: '15px', margin: '20px 0 10px', color: '#4A2C2A' }}>
+          Próximos a entregar (7 días)
+        </h3>
+        {proximosEntregar.length === 0 ? (
+          <p className="aviso-ok">✅ No tenés entregas programadas para los próximos 7 días.</p>
+        ) : (
+          <div className="lista-tarjetas" style={{ paddingBottom: '10px' }}>
+            {proximosEntregar.map((p) => (
+              <div key={p.id_pedido} className="tarjeta-pedido" onClick={() => onAbrirPedido(p.id_pedido)}>
+                <div className="tarjeta-pedido-linea1">
+                  <span className="tarjeta-pedido-cliente">{nombreCliente(p)}</span>
+                  <span className="tarjeta-pedido-id">#{p.id_pedido}</span>
+                </div>
+                <div className="tarjeta-pedido-fecha">Entrega: {formatearFecha(p.fecha_entrega)}</div>
+                <div className="tarjeta-pedido-linea2">
+                  <span className="tarjeta-pedido-total">Total ${formatearMoneda(p.total)}</span>
+                  <span className={`tarjeta-pedido-estado ${p.saldo > 0.01 ? 'pendiente' : 'cobrado'}`}>
+                    {p.saldo > 0.01 ? `Saldo $${formatearMoneda(p.saldo)}` : 'Cobrado'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h3 style={{ fontSize: '15px', margin: '20px 0 10px', color: '#4A2C2A' }}>
+          Pedidos con saldo pendiente
+        </h3>
+        {conSaldoPendiente.length === 0 ? (
+          <p className="aviso-ok">✅ No hay pedidos con saldo pendiente.</p>
+        ) : (
+          <div className="lista-tarjetas">
+            {conSaldoPendiente.map((p) => (
+              <div key={p.id_pedido} className="tarjeta-pedido" onClick={() => onAbrirPedido(p.id_pedido)}>
+                <div className="tarjeta-pedido-linea1">
+                  <span className="tarjeta-pedido-cliente">{nombreCliente(p)}</span>
+                  <span className="tarjeta-pedido-id">#{p.id_pedido}</span>
+                </div>
+                <div className="tarjeta-pedido-fecha">Pedido: {formatearFecha(p.fecha_pedido)}</div>
+                <div className="tarjeta-pedido-linea2">
+                  <span className="tarjeta-pedido-total">Total ${formatearMoneda(p.total)}</span>
+                  <span className="tarjeta-pedido-estado pendiente">
+                    Saldo ${formatearMoneda(p.saldo)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ===== VISTA DESKTOP (sin cambios) =====
   return (
     <div className="modulo">
       <h2>Inicio</h2>
