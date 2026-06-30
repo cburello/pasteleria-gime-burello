@@ -812,7 +812,17 @@ function DetallePedido({ pedido, esMobile, onVolver }) {
       return
     }
 
-    const siguienteSecuencia = pagos.length > 0 ? Math.max(...pagos.map((p) => p.secuencia)) + 1 : 1
+    // DESPUÉS — consulta la BD en el momento, siempre correcto:
+const { data: pagosActuales } = await supabase
+  .from('pagos')
+  .select('secuencia')
+  .eq('id_pedido', pedido.id_pedido)
+  .order('secuencia', { ascending: false })
+  .limit(1)
+
+const siguienteSecuencia = pagosActuales && pagosActuales.length > 0 
+  ? pagosActuales[0].secuencia + 1 
+  : 1
 
     const { error } = await supabase.from('pagos').insert({
       id_pedido: pedido.id_pedido,
