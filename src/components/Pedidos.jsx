@@ -95,7 +95,7 @@ function formatearFecha(fecha) {
 
     const { data: detalles } = await supabase
       .from('detalle_pedido')
-      .select('*')
+      .select('*, productos(descripcion), combos(descripcion)')
       .in('id_pedido', idsPedidos)
 
     const { data: todosLosPagos } = await supabase
