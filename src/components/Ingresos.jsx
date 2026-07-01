@@ -13,8 +13,6 @@ function useEsMobile() {
   return esMobile
 }
 
-// Devuelve la fecha de HOY en formato YYYY-MM-DD usando el huso horario local
-// (toISOString() convierte a UTC y puede adelantar/atrasar un día cerca de medianoche).
 function fechaLocalHoy() {
   const hoy = new Date()
   const anio = hoy.getFullYear()
@@ -22,6 +20,18 @@ function fechaLocalHoy() {
   const dia = String(hoy.getDate()).padStart(2, '0')
   return `${anio}-${mes}-${dia}`
 }
+
+// Paleta de colores para conceptos — rota automáticamente si hay más de 8
+const PALETA_CONCEPTOS = [
+  { bg: '#E6F1FB', text: '#0C447C' },
+  { bg: '#E1F5EE', text: '#085041' },
+  { bg: '#FAECE7', text: '#712B13' },
+  { bg: '#FAEEDA', text: '#633806' },
+  { bg: '#FBEAF0', text: '#72243E' },
+  { bg: '#EAF3DE', text: '#27500A' },
+  { bg: '#EEEDFE', text: '#3C3489' },
+  { bg: '#F1EFE8', text: '#444441' },
+]
 
 function Ingresos() {
   const esMobile = useEsMobile()
@@ -31,6 +41,7 @@ function Ingresos() {
   const [error, setError] = useState(null)
 
   const [conceptos, setConceptos] = useState([])
+  const [todosLosConceptos, setTodosLosConceptos] = useState([])
   const [mediosPago, setMediosPago] = useState([])
 
   const [editandoId, setEditandoId] = useState(null)
@@ -42,7 +53,7 @@ function Ingresos() {
   const [guardando, setGuardando] = useState(false)
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
-  const [modoMobile, setModoMobile] = useState('lista') // 'lista' | 'form'
+  const [modoMobile, setModoMobile] = useState('lista')
 
   function primerDiaDelMes() {
     const hoy = new Date()
@@ -85,12 +96,28 @@ function Ingresos() {
       .replace(/[\u0300-\u036f]/g, '')
   }
 
+  // Devuelve el color de la paleta para un concepto dado su descripcion
+  function colorConcepto(descripcion) {
+    const idx = todosLosConceptos.findIndex(
+      (c) => normalizar(c.descripcion) === normalizar(descripcion)
+    )
+    return PALETA_CONCEPTOS[(idx === -1 ? 0 : idx) % PALETA_CONCEPTOS.length]
+  }
+
+  // Nombre del cliente para un ingreso de pedido
+  function nombreClientePedido(ingreso) {
+    const cliente = ingreso.pedidos?.clientes
+    if (!cliente) return null
+    if (cliente.cliente_anonimo === 'S') return ingreso.pedidos?.descripcion || null
+    return cliente.descripcion || null
+  }
+
   async function cargarIngresos() {
     setCargando(true)
     setError(null)
     const { data, error } = await supabase
       .from('ingresos')
-      .select('*, conceptos(descripcion), medios_pagos(descripcion)')
+      .select('*, conceptos(descripcion), medios_pagos(descripcion), pedidos(descripcion, clientes(descripcion, cliente_anonimo))')
       .gte('fecha', fechaDesdeFiltro)
       .lte('fecha', fechaHastaFiltro)
       .order('fecha', { ascending: false })
@@ -109,13 +136,17 @@ function Ingresos() {
   }
 
   async function cargarConceptos() {
-    const { data } = await supabase
+    // Carga todos los conceptos de ingreso para asignar colores consistentes
+    const { data: todos } = await supabase
       .from('conceptos')
       .select('*')
       .eq('indicador', 'Ingreso')
-      .neq('descripcion', 'Pedidos')
       .order('descripcion')
-    setConceptos(data || [])
+    setTodosLosConceptos(todos || [])
+
+    // Solo los manuales (sin Pedidos) para el formulario
+    const manuales = (todos || []).filter((c) => c.descripcion !== 'Pedidos')
+    setConceptos(manuales)
   }
 
   async function cargarMediosPago() {
@@ -326,7 +357,6 @@ function Ingresos() {
       )
     }
 
-    // Lista en tarjetas
     return (
       <div className="pedidos-mobile">
         <div className="pedidos-mobile-header">
@@ -369,37 +399,53 @@ function Ingresos() {
           <div className="lista-tarjetas">
             {ingresosFiltrados.length === 0 && <p>No hay ingresos en ese período.</p>}
 
-            {ingresosFiltrados.map((i) => (
-              <div
-                key={i.id_ingreso}
-                className="tarjeta-pedido"
-                onClick={() => iniciarEdicion(i)}
-              >
-                <div className="tarjeta-pedido-linea1">
-                  <span className="tarjeta-pedido-cliente">{i.conceptos?.descripcion}</span>
-                  <span className="tarjeta-pedido-id">{formatearFecha(i.fecha)}</span>
-                </div>
-                {i.observaciones && (
-                  <div className="tarjeta-pedido-fecha">{i.observaciones}</div>
-                )}
-                <div className="tarjeta-pedido-linea2">
-                  <span className="tarjeta-pedido-total">
-                    {i.id_pedido ? `Pedido #${i.id_pedido}` : i.medios_pagos?.descripcion}
-                  </span>
-                  <span className="tarjeta-pedido-estado cobrado">${formatearMoneda(i.importe)}</span>
-                </div>
-                {!i.id_pedido && (
-                  <div className="tarjeta-pedido-acciones">
-                    <button
-                      className="btn-link btn-eliminar"
-                      onClick={(e) => { e.stopPropagation(); eliminar(i) }}
+            {ingresosFiltrados.map((i) => {
+              const color = colorConcepto(i.conceptos?.descripcion)
+              const cliente = nombreClientePedido(i)
+              return (
+                <div key={i.id_ingreso} className="tarjeta-pedido" onClick={() => iniciarEdicion(i)}>
+                  <div className="tarjeta-pedido-linea1">
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        padding: '3px 10px',
+                        borderRadius: '20px',
+                        backgroundColor: color.bg,
+                        color: color.text,
+                      }}
                     >
-                      Eliminar
-                    </button>
+                      {i.conceptos?.descripcion}
+                    </span>
+                    <span className="tarjeta-pedido-id">{formatearFecha(i.fecha)}</span>
                   </div>
-                )}
-              </div>
-            ))}
+                  {i.observaciones && (
+                    <div className="tarjeta-pedido-fecha">{i.observaciones}</div>
+                  )}
+                  {cliente && (
+                    <div className="tarjeta-pedido-fecha" style={{ color: color.text }}>
+                      👤 {cliente}
+                    </div>
+                  )}
+                  <div className="tarjeta-pedido-linea2">
+                    <span className="tarjeta-pedido-total">
+                      {i.id_pedido ? `Pedido #${i.id_pedido}` : i.medios_pagos?.descripcion}
+                    </span>
+                    <span className="tarjeta-pedido-estado cobrado">${formatearMoneda(i.importe)}</span>
+                  </div>
+                  {!i.id_pedido && (
+                    <div className="tarjeta-pedido-acciones">
+                      <button
+                        className="btn-link btn-eliminar"
+                        onClick={(e) => { e.stopPropagation(); eliminar(i) }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
 
             {ingresosFiltrados.length > 0 && (
               <div className="costo-total" style={{ marginBottom: '6px' }}>
@@ -419,7 +465,7 @@ function Ingresos() {
     )
   }
 
-  // ===== VISTA DESKTOP (sin cambios) =====
+  // ===== VISTA DESKTOP =====
   return (
     <div className="modulo">
       <h2>Ingresos</h2>
@@ -528,19 +574,39 @@ function Ingresos() {
               {ingresosFiltrados.length === 0 && (
                 <tr><td colSpan="6">No hay ingresos registrados.</td></tr>
               )}
-              {ingresosFiltrados.map((i) => (
-                <tr key={i.id_ingreso}>
-                  <td>{formatearFecha(i.fecha)}</td>
-                  <td>{i.conceptos?.descripcion}</td>
-                  <td>${formatearMoneda(i.importe)}</td>
-                  <td>{i.medios_pagos?.descripcion || i.id_medio_pago}</td>
-                  <td>{i.id_pedido ? `Pedido #${i.id_pedido}` : 'Manual'}</td>
-                  <td>
-                    <button className="btn-link" onClick={() => iniciarEdicion(i)}>Editar</button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminar(i)}>Eliminar</button>
-                  </td>
-                </tr>
-              ))}
+              {ingresosFiltrados.map((i) => {
+                const color = colorConcepto(i.conceptos?.descripcion)
+                const cliente = nombreClientePedido(i)
+                const origenTexto = i.id_pedido
+                  ? `Pedido #${i.id_pedido}${cliente ? ` · ${cliente}` : ''}`
+                  : 'Manual'
+                return (
+                  <tr key={i.id_ingreso}>
+                    <td>{formatearFecha(i.fecha)}</td>
+                    <td>
+                      <span style={{
+                        display: 'inline-block',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        padding: '3px 10px',
+                        borderRadius: '20px',
+                        backgroundColor: color.bg,
+                        color: color.text,
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {i.conceptos?.descripcion}
+                      </span>
+                    </td>
+                    <td>${formatearMoneda(i.importe)}</td>
+                    <td>{i.medios_pagos?.descripcion || i.id_medio_pago}</td>
+                    <td style={{ fontSize: '13px' }}>{origenTexto}</td>
+                    <td>
+                      <button className="btn-link" onClick={() => iniciarEdicion(i)}>Editar</button>
+                      <button className="btn-link btn-eliminar" onClick={() => eliminar(i)}>Eliminar</button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
