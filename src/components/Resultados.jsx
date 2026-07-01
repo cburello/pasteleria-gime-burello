@@ -469,7 +469,8 @@ function DetalleOrigen({ registros, origen }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
+    const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+    return `${dia}/${mes}/${anio}`
   }
 
   if (registros.length === 0) {
@@ -622,7 +623,8 @@ function DetalleIngresoSimple({ registros }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
+    const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+    return `${dia}/${mes}/${anio}`
   }
 
   return (
@@ -663,7 +665,8 @@ function DetallePedidosDeIngresos({ registros }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR')
+    const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+    return `${dia}/${mes}/${anio}`
   }
 
   return (
