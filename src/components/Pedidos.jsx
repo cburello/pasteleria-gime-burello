@@ -837,7 +837,7 @@ async function quitarLinea(secuencia) {
       return
     }
 
-    const fechaHoy = new Date().toISOString().slice(0, 10)
+    const fechaHoy = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 10)
     const cerrado = await periodoEstaCerrado(fechaHoy, medioPago)
     if (cerrado) {
       alert('No se puede registrar este pago porque el período correspondiente ya fue cerrado en Resultados.')
@@ -889,7 +889,7 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
       tipo: tipoPago,
       importe: importe,
       medio_pago: medioPago,
-      fecha_pago: new Date().toISOString(),
+      fecha_pago: new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 10),
     })
 
     if (error) {
@@ -1341,6 +1341,15 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
                 <button className="btn-secundario" onClick={generarComanda}>
                   🧾 Generar Comanda (PDF)
                 </button>
+                {(clienteSeleccionado?.telefono || telefono) && (
+                  <button
+                    className="btn-secundario"
+                    style={{ color: '#25D366', borderColor: '#25D366' }}
+                    onClick={enviarWhatsappDesdeDetalle}
+                  >
+                    📲 Enviar por WhatsApp
+                  </button>
+                )}
               </div>
             )}
 
@@ -1421,6 +1430,34 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
     )
   }
 
+  function enviarWhatsappDesdeDetalle() {
+    const tel = clienteSeleccionado?.telefono || telefono
+    if (!tel) return
+    const numero = '549' + tel.replace(/\D/g, '')
+    const nombre = clienteSeleccionado && !clienteEsAnonimo(clienteSeleccionado)
+      ? clienteSeleccionado.descripcion
+      : descripcion || '— Cliente anónimo —'
+    const detalle = lineas
+      .map((l) => {
+        const desc = l.productos?.descripcion || l.combos?.descripcion || '—'
+        const subtotal = parseFloat(l.precio_venta) * parseFloat(l.cantidad)
+        return `• ${l.cantidad} x ${desc} — $${formatearMoneda(subtotal)}`
+      })
+      .join('\n')
+    const saldo = saldoPendiente > 0.01
+      ? `⚠️ *Saldo pendiente: $${formatearMoneda(saldoPendiente)}*`
+      : `✅ *Pedido totalmente abonado*`
+    const mensaje =
+      `🎂 *Gime Burello Pastelería*\n\n` +
+      `Hola *${nombre}*! 👋 Te confirmamos tu pedido:\n\n` +
+      `📦 *Detalle:*\n${detalle || '(sin detalle)'}\n\n` +
+      `💰 *Total: $${formatearMoneda(totalPedido)}*\n` +
+      `${saldo}\n\n` +
+      `📅 *Entrega: ${formatearFecha(fechaEntrega) || '—'}*\n\n` +
+      `_¡Gracias por elegirnos!_ 🙌`
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
+  }
+
   return (
     <div className="modulo">
       <button className="btn-volver" onClick={onVolver}>
@@ -1434,6 +1471,15 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
           <button className="btn-secundario" onClick={generarComanda}>
             🧾 Generar Comanda (PDF)
           </button>
+          {(clienteSeleccionado?.telefono || telefono) && (
+            <button
+              className="btn-secundario"
+              style={{ color: '#25D366', borderColor: '#25D366' }}
+              onClick={enviarWhatsappDesdeDetalle}
+            >
+              📲 Enviar por WhatsApp
+            </button>
+          )}
         </div>
       )}
 
