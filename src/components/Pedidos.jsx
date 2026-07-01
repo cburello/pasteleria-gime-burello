@@ -258,7 +258,7 @@ function formatearFecha(fecha) {
                   </span>
                 </div>
                 <div className="tarjeta-pedido-acciones">
-                  {pedido.clientes?.telefono && (
+                  {p.clientes?.telefono && (
                     <button
                       className="btn-link"
                       style={{ color: '#25D366' }}
