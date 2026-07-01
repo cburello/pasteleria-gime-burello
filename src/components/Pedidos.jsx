@@ -82,7 +82,7 @@ function formatearFecha(fecha) {
     setError(null)
     const { data, error } = await supabase
       .from('pedidos')
-      .select('*, clientes(descripcion, cliente_anonimo)')
+      .select('*, clientes(descripcion, cliente_anonimo, telefono)')
       .order('fecha_entrega', { ascending: false })
 
     if (error) {
@@ -110,7 +110,7 @@ function formatearFecha(fecha) {
       const total = lineasPedido.reduce((acc, l) => acc + parseFloat(l.precio_venta) * parseFloat(l.cantidad), 0)
       const pagado = pagosPedido.reduce((acc, pg) => acc + parseFloat(pg.importe), 0)
 
-      return { ...p, total, pendiente: total - pagado }
+      return { ...p, total, pendiente: total - pagado, lineas: lineasPedido }
     })
 
     setPedidos(pedidosConTotales)
@@ -171,6 +171,36 @@ function formatearFecha(fecha) {
     return pedido.clientes?.descripcion || pedido.descripcion || '—'
   }
 
+  function enviarWhatsapp(pedido, e) {
+    e.stopPropagation()
+    const tel = pedido.clientes?.telefono || pedido.telefono
+    if (!tel) return
+    const numero = '549' + tel.replace(/\D/g, '')
+    const nombre = nombreCliente(pedido)
+    const lineas = (pedido.lineas || [])
+      .map((l) => {
+        const desc = l.productos?.descripcion || l.combos?.descripcion || l.descripcion || '—'
+        const subtotal = parseFloat(l.precio_venta) * parseFloat(l.cantidad)
+        return `• ${l.cantidad} x ${desc} — $${formatearMoneda(subtotal)}`
+      })
+      .join('\n')
+    const saldo = pedido.pendiente > 0.01
+      ? `⚠️ *Saldo pendiente: $${formatearMoneda(pedido.pendiente)}*`
+      : `✅ *Pedido totalmente abonado*`
+    const entrega = pedido.fecha_entrega
+      ? (() => { const [a, m, d] = pedido.fecha_entrega.slice(0, 10).split('-'); return `${d}/${m}/${a}` })()
+      : '—'
+    const mensaje =
+      `🎂 *Gime Burello Pastelería*\n\n` +
+      `Hola *${nombre}*! 👋 Te confirmamos tu pedido:\n\n` +
+      `📦 *Detalle:*\n${lineas || '(sin detalle)'}\n\n` +
+      `💰 *Total: $${formatearMoneda(pedido.total)}*\n` +
+      `${saldo}\n\n` +
+      `📅 *Entrega: ${entrega}*\n\n` +
+      `_¡Gracias por elegirnos!_ 🙌`
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
+  }
+
   const pedidosFiltrados = textoBusqueda.trim()
     ? pedidos.filter((p) => normalizar(nombreCliente(p)).includes(normalizar(textoBusqueda)))
     : pedidos
@@ -228,6 +258,15 @@ function formatearFecha(fecha) {
                   </span>
                 </div>
                 <div className="tarjeta-pedido-acciones">
+                  {pedido.clientes?.telefono && (
+                    <button
+                      className="btn-link"
+                      style={{ color: '#25D366' }}
+                      onClick={(e) => enviarWhatsapp(p, e)}
+                    >
+                      📲 WhatsApp
+                    </button>
+                  )}
                   <button
                     className="btn-link btn-eliminar"
                     onClick={(e) => {
@@ -307,6 +346,15 @@ function formatearFecha(fecha) {
                     <button className="btn-link" onClick={() => abrirPedido(p)}>
                       Ver / Editar
                     </button>
+                    {p.clientes?.telefono && (
+                      <button
+                        className="btn-link"
+                        style={{ color: '#25D366' }}
+                        onClick={(e) => enviarWhatsapp(p, e)}
+                      >
+                        📲 WA
+                      </button>
+                    )}
                     <button className="btn-link btn-eliminar" onClick={() => eliminarPedido(p.id_pedido)}>
                       Eliminar
                     </button>
