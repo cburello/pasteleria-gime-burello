@@ -72,12 +72,11 @@ function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
     }).format(valor)
   }
 
-  function formatearFecha(fecha) {
-    if (!fecha) return ''
-    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
-    return new Date(fechaStr).toLocaleDateString('es-AR')
-  }
-
+function formatearFecha(fecha) {
+  if (!fecha) return ''
+  const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+  return `${dia}/${mes}/${anio}`
+}
   async function cargarPedidos() {
     setCargando(true)
     setError(null)
