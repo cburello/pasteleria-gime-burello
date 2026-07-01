@@ -1050,7 +1050,11 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
     }
 
     const nombreArchivo = `Comanda_${(descripcion || 'Cliente').replace(/\s+/g, '_')}.pdf`
-    doc.save(nombreArchivo)
+    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+  window.open(doc.output('bloburl'), '_blank')
+} else {
+  doc.save(nombreArchivo)
+}
   }
 
   // ===== VISTA MOBILE: carga de pedido en 3 pasos =====
