@@ -33,6 +33,17 @@ const PALETA_CONCEPTOS = [
   { bg: '#F1EFE8', text: '#444441' },
 ]
 
+async function periodoCerrado(fechaStr) {
+  if (!fechaStr) return false
+  const periodo = fechaStr.slice(0, 7) + '-01'
+  const { data } = await supabase
+    .from('resultados')
+    .select('id_resultado')
+    .eq('periodo', periodo)
+    .limit(1)
+  return data && data.length > 0
+}
+
 function Ingresos() {
   const esMobile = useEsMobile()
 
@@ -163,9 +174,13 @@ function Ingresos() {
     setObservaciones('')
   }
 
-  function iniciarEdicion(ingreso) {
+  async function iniciarEdicion(ingreso) {
     if (ingreso.id_pedido) {
       alert('Este ingreso fue generado automáticamente desde un pago de Pedidos y no se puede editar aquí.')
+      return
+    }
+    if (await periodoCerrado(ingreso.fecha)) {
+      alert('🔒 Este ingreso pertenece a un período cerrado y no se puede modificar.')
       return
     }
     setEditandoId(ingreso.id_ingreso)
@@ -219,6 +234,14 @@ function Ingresos() {
       return
     }
 
+    if (editandoId) {
+      const original = ingresos.find(i => i.id_ingreso === editandoId)
+      if (original && await periodoCerrado(original.fecha)) {
+        alert('🔒 Este ingreso pertenece a un período cerrado y no se puede modificar.')
+        return
+      }
+    }
+
     const fechaAjustada = await ajustarFechaSiCerrada(fecha)
     if (fechaAjustada !== fecha) setFecha(fechaAjustada)
 
@@ -255,7 +278,10 @@ function Ingresos() {
       alert('Este ingreso fue generado automáticamente desde un pago de Pedidos y no se puede eliminar aquí.')
       return
     }
-
+    if (await periodoCerrado(ingreso.fecha)) {
+      alert('🔒 Este ingreso pertenece a un período cerrado y no se puede eliminar.')
+      return
+    }
     const confirmar = window.confirm('¿Seguro que querés eliminar este ingreso?')
     if (!confirmar) return
 

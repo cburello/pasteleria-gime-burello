@@ -669,10 +669,16 @@ function DetallePedido({ pedido, esMobile, onVolver }) {
     setBuscandoPrecio(false)
   }
 
-  async function agregarLinea() {
+async function agregarLinea() {
     if (!pedido.id_pedido) {
       alert('Primero guardá los datos generales del pedido antes de agregar productos o combos')
       return
+    }
+    for (const pago of pagos) {
+      if (await periodoEstaCerrado(pago.fecha_pago, pago.medio_pago)) {
+        alert('🔒 Este pedido tiene pagos en períodos cerrados. No se puede modificar su detalle.')
+        return
+      }
     }
     if (!itemSeleccionado || !cantidadItem || !precioVentaItem) {
       alert('Seleccioná un producto/combo, indicá la cantidad y verificá el precio')
@@ -705,7 +711,13 @@ function DetallePedido({ pedido, esMobile, onVolver }) {
     }
   }
 
-  async function quitarLinea(secuencia) {
+async function quitarLinea(secuencia) {
+    for (const pago of pagos) {
+      if (await periodoEstaCerrado(pago.fecha_pago, pago.medio_pago)) {
+        alert('🔒 Este pedido tiene pagos en períodos cerrados. No se puede modificar su detalle.')
+        return
+      }
+    }
     const confirmar = window.confirm('¿Quitar esta línea del pedido?')
     if (!confirmar) return
 
