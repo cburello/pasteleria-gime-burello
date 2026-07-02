@@ -27,6 +27,7 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
         { id: 'recetas', label: 'Recetas' },
         { id: 'productos', label: 'Productos' },
         { id: 'combos', label: 'Combos' },
+        { id: 'preciosMantenimiento', label: 'Mantenimiento de Precios' },
       ],
     },
     {

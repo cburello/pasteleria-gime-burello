@@ -175,6 +175,7 @@ function DetalleProducto({ producto, onVolver }) {
   const [fechaInicioPrecio, setFechaInicioPrecio] = useState(new Date().toISOString().slice(0, 10))
   const [fechaFinPrecio, setFechaFinPrecio] = useState('3000-12-31')
   const [precioVentaManual, setPrecioVentaManual] = useState('')
+  const [precioMayoristaManual, setPrecioMayoristaManual] = useState('')
   const [guardandoPrecio, setGuardandoPrecio] = useState(false)
   const [editandoPrecioId, setEditandoPrecioId] = useState(null)
 
@@ -378,6 +379,7 @@ function DetalleProducto({ producto, onVolver }) {
     setFechaInicioPrecio(new Date().toISOString().slice(0, 10))
     setFechaFinPrecio('3000-12-31')
     setPrecioVentaManual(precioTeoricoSimulado !== null ? precioTeoricoSimulado.toFixed(2) : '')
+    setPrecioMayoristaManual('')
   }
 
   function iniciarEdicionPrecio(p) {
@@ -385,6 +387,7 @@ function DetalleProducto({ producto, onVolver }) {
     setFechaInicioPrecio(p.fecha_inicio?.slice(0, 10) || '')
     setFechaFinPrecio(p.fecha_fin?.slice(0, 10) || '3000-12-31')
     setPrecioVentaManual(p.precio_venta)
+    setPrecioMayoristaManual(p.precio_mayorista || '')
   }
 
   async function guardarPrecio() {
@@ -435,6 +438,7 @@ function DetalleProducto({ producto, onVolver }) {
       fecha_fin: finEfectivo,
       precio_venta: parseFloat(precioVentaManual),
       precio_teorico: precioTeoricoSimulado !== null ? parseFloat(precioTeoricoSimulado.toFixed(2)) : null,
+      precio_mayorista: precioMayoristaManual ? parseFloat(precioMayoristaManual) : null,
     }
 
     let resultado
@@ -453,6 +457,7 @@ function DetalleProducto({ producto, onVolver }) {
       alert('Precio guardado correctamente.' + avisoAjuste)
       setEditandoPrecioId(null)
       setPrecioVentaManual('')
+      setPrecioMayoristaManual('')
       cargarPrecios()
     }
 
@@ -617,6 +622,17 @@ function DetalleProducto({ producto, onVolver }) {
                 onChange={(e) => setPrecioVentaManual(e.target.value)}
               />
             </div>
+            <div className="campo">
+              <label style={{ color: '#5B21B6' }}>🏪 Precio mayorista (opcional)</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={precioMayoristaManual}
+                onChange={(e) => setPrecioMayoristaManual(e.target.value)}
+                style={{ borderColor: '#C4B5FD' }}
+              />
+            </div>
             <div className="campo-acciones">
               <button className="btn-secundario" type="button" onClick={iniciarNuevoPrecio}>
                 Usar precio sugerido
@@ -637,6 +653,7 @@ function DetalleProducto({ producto, onVolver }) {
                     <th>Desde</th>
                     <th>Hasta</th>
                     <th>Precio venta</th>
+                    <th>Precio mayorista</th>
                     <th>Precio teórico (al momento)</th>
                     <th>Acciones</th>
                   </tr>
@@ -644,7 +661,7 @@ function DetalleProducto({ producto, onVolver }) {
                 <tbody>
                   {precios.length === 0 && (
                     <tr>
-                      <td colSpan="5">No hay precios registrados.</td>
+                      <td colSpan="6">No hay precios registrados.</td>
                     </tr>
                   )}
                   {precios.map((p) => (
@@ -652,6 +669,9 @@ function DetalleProducto({ producto, onVolver }) {
                       <td>{formatearFecha(p.fecha_inicio)}</td>
                       <td>{p.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(p.fecha_fin)}</td>
                       <td>${formatearMoneda(p.precio_venta)}</td>
+                      <td>{p.precio_mayorista ? (
+                        <span style={{ color: '#5B21B6', fontWeight: 600 }}>${formatearMoneda(p.precio_mayorista)}</span>
+                      ) : '—'}</td>
                       <td>{p.precio_teorico ? `$${formatearMoneda(p.precio_teorico)}` : '—'}</td>
                       <td>
                         <button className="btn-link" onClick={() => iniciarEdicionPrecio(p)}>

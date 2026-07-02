@@ -11,6 +11,7 @@ function Clientes() {
   const [descripcion, setDescripcion] = useState('')
   const [domicilio, setDomicilio] = useState('')
   const [telefono, setTelefono] = useState('')
+  const [tipoCliente, setTipoCliente] = useState('Minorista')
   const [guardando, setGuardando] = useState(false)
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
@@ -52,6 +53,7 @@ function Clientes() {
     setDescripcion('')
     setDomicilio('')
     setTelefono('')
+    setTipoCliente('Minorista')
     setSimilaresEncontrados(null)
     setYaVerificado(false)
   }
@@ -62,6 +64,7 @@ function Clientes() {
     setDescripcion(cliente.descripcion || '')
     setDomicilio(cliente.domicilio || '')
     setTelefono(cliente.telefono || '')
+    setTipoCliente(cliente.tipo_cliente || 'Minorista')
     setSimilaresEncontrados(null)
     setYaVerificado(true)
   }
@@ -105,8 +108,8 @@ function Clientes() {
     setGuardando(true)
 
     const registro = esAnonimo
-      ? { cliente_anonimo: 'S', descripcion: null, domicilio: null, telefono: null }
-      : { cliente_anonimo: 'N', descripcion, domicilio, telefono }
+      ? { cliente_anonimo: 'S', descripcion: null, domicilio: null, telefono: null, tipo_cliente: 'Minorista' }
+      : { cliente_anonimo: 'N', descripcion, domicilio, telefono, tipo_cliente: tipoCliente }
 
     if (editandoId) {
       const { cliente_anonimo, ...registroSinAnonimo } = registro
@@ -206,6 +209,13 @@ function Clientes() {
                 onChange={(e) => setTelefono(e.target.value)}
               />
             </div>
+            <div className="campo">
+              <label>Categoría de precios</label>
+              <select value={tipoCliente} onChange={(e) => setTipoCliente(e.target.value)}>
+                <option value="Minorista">Minorista</option>
+                <option value="Mayorista">Mayorista</option>
+              </select>
+            </div>
           </>
         )}
 
@@ -266,13 +276,14 @@ function Clientes() {
                 <th>Domicilio</th>
                 <th>Teléfono</th>
                 <th>Tipo</th>
+                <th>Categoría</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {listaAMostrar.length === 0 && (
                 <tr>
-                  <td colSpan="6">No se encontraron clientes.</td>
+                  <td colSpan="7">No se encontraron clientes.</td>
                 </tr>
               )}
               {listaAMostrar.map((c) => (
@@ -282,6 +293,19 @@ function Clientes() {
                   <td>{c.domicilio || '—'}</td>
                   <td>{c.telefono || '—'}</td>
                   <td>{c.cliente_anonimo === 'S' ? 'Anónimo' : 'Identificado'}</td>
+                  <td>
+                    {c.tipo_cliente === 'Mayorista' ? (
+                      <span style={{
+                        fontSize: '11px', fontWeight: 600, padding: '3px 8px',
+                        borderRadius: '10px', backgroundColor: '#EDE9FE', color: '#5B21B6',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        🏪 MAYORISTA
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#8A6A66' }}>Minorista</span>
+                    )}
+                  </td>
                   <td>
                     <button className="btn-link" onClick={() => iniciarEdicion(c)}>
                       Editar

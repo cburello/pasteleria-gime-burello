@@ -374,6 +374,8 @@ function DetallePedido({ pedido, esMobile, onVolver }) {
   const [textoBuscarCliente, setTextoBuscarCliente] = useState('')
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
 
+  const esMayorista = clienteSeleccionado?.tipo_cliente === 'Mayorista'
+
   const [idCliente, setIdCliente] = useState(pedido.id_cliente)
   const [descripcion, setDescripcion] = useState(pedido.descripcion || '')
   const [domicilio, setDomicilio] = useState(pedido.domicilio || '')
@@ -704,8 +706,11 @@ function DetallePedido({ pedido, esMobile, onVolver }) {
     if (tipoItem === 'producto') {
       const precioVigente = await obtenerPrecioVigenteProducto(item.id_producto)
       if (precioVigente) {
-        setPrecioRealItem(precioVigente.precio_venta)
-        setPrecioVentaItem(precioVigente.precio_venta)
+        const precioAplicar = esMayorista && precioVigente.precio_mayorista
+          ? precioVigente.precio_mayorista
+          : precioVigente.precio_venta
+        setPrecioRealItem(precioAplicar)
+        setPrecioVentaItem(precioAplicar)
       }
     } else {
       if (item.precio) {
@@ -1051,10 +1056,10 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
 
     const nombreArchivo = `Comanda_${(descripcion || 'Cliente').replace(/\s+/g, '_')}.pdf`
     if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-  window.open(doc.output('bloburl'), '_blank')
-} else {
-  doc.save(nombreArchivo)
-}
+      window.open(doc.output('bloburl'), '_blank')
+    } else {
+      doc.save(nombreArchivo)
+    }
   }
 
   // ===== VISTA MOBILE: carga de pedido en 3 pasos =====
@@ -1087,6 +1092,18 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
           <div className={`mobile-progreso-punto ${pasoMobile >= 2 ? 'activo' : ''}`}></div>
           <div className={`mobile-progreso-punto ${pasoMobile >= 3 ? 'activo' : ''}`}></div>
         </div>
+
+        {esMayorista && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: 'linear-gradient(135deg, #7C3AED, #A855F7)',
+            color: 'white', padding: '10px 14px', borderRadius: '10px',
+            fontSize: '13px', fontWeight: 600, marginBottom: '12px',
+            boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)',
+          }}>
+            🏪 MAYORISTA — precios mayoristas aplicados
+          </div>
+        )}
 
         {/* PASO 1: Cliente y fechas */}
         {pasoMobile === 1 && (
@@ -1345,15 +1362,6 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
                 <button className="btn-secundario" onClick={generarComanda}>
                   🧾 Generar Comanda (PDF)
                 </button>
-                {(clienteSeleccionado?.telefono || telefono) && (
-                  <button
-                    className="btn-secundario"
-                    style={{ color: '#25D366', borderColor: '#25D366' }}
-                    onClick={enviarWhatsappDesdeDetalle}
-                  >
-                    📲 Enviar por WhatsApp
-                  </button>
-                )}
               </div>
             )}
 
@@ -1470,20 +1478,23 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
 
       <h2>{pedido.id_pedido ? `Editar Pedido #${pedido.id_pedido}` : 'Nuevo Pedido'}</h2>
 
+      {esMayorista && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          background: 'linear-gradient(135deg, #7C3AED, #A855F7)',
+          color: 'white', padding: '12px 16px', borderRadius: '10px',
+          fontSize: '14px', fontWeight: 600, marginBottom: '16px',
+          boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)',
+        }}>
+          🏪 CLIENTE MAYORISTA — se aplican precios mayoristas
+        </div>
+      )}
+
       {pedido.id_pedido && lineas.length > 0 && (
         <div className="acciones-superiores">
           <button className="btn-secundario" onClick={generarComanda}>
             🧾 Generar Comanda (PDF)
           </button>
-          {(clienteSeleccionado?.telefono || telefono) && (
-            <button
-              className="btn-secundario"
-              style={{ color: '#25D366', borderColor: '#25D366' }}
-              onClick={enviarWhatsappDesdeDetalle}
-            >
-              📲 Enviar por WhatsApp
-            </button>
-          )}
         </div>
       )}
 
