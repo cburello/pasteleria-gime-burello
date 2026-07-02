@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { generarListaPreciosDesdeBD } from '../lib/listaPreciosPdf'
 
 function useEsMobile() {
   const [esMobile, setEsMobile] = useState(
@@ -19,6 +20,8 @@ function Dashboard({ onAbrirPedido }) {
   const [proximosEntregar, setProximosEntregar] = useState([])
   const [conSaldoPendiente, setConSaldoPendiente] = useState([])
   const [resumenMes, setResumenMes] = useState({ cantidad: 0, totalFacturado: 0, totalCobrado: 0 })
+  const [tipoListaPdf, setTipoListaPdf] = useState('ambos')
+  const [generandoPdf, setGenerandoPdf] = useState(false)
 
   useEffect(() => {
     cargarDashboard()
@@ -32,11 +35,11 @@ function Dashboard({ onAbrirPedido }) {
     }).format(valor)
   }
 
-function formatearFecha(fecha) {
-  if (!fecha) return ''
-  const [anio, mes, dia] = fecha.slice(0, 10).split('-')
-  return `${dia}/${mes}/${anio}`
-}
+  function formatearFecha(fecha) {
+    if (!fecha) return ''
+    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
+    return new Date(fechaStr).toLocaleDateString('es-AR')
+  }
 
   function nombreCliente(pedido) {
     if (pedido.clientes?.cliente_anonimo === 'S') return pedido.descripcion || '— Cliente anónimo —'
@@ -100,6 +103,16 @@ function formatearFecha(fecha) {
     setCargando(false)
   }
 
+  async function generarListaPrecios() {
+    setGenerandoPdf(true)
+    try {
+      await generarListaPreciosDesdeBD(supabase, tipoListaPdf)
+    } catch (e) {
+      alert('No se pudo generar la lista de precios: ' + e.message)
+    }
+    setGenerandoPdf(false)
+  }
+
   if (cargando) {
     return (
       <div className="modulo">
@@ -130,6 +143,26 @@ function formatearFecha(fecha) {
             <span className="tarjeta-pedido-total">Total cobrado</span>
             <span style={{ fontWeight: 600, color: '#2D6A35' }}>${formatearMoneda(resumenMes.totalCobrado)}</span>
           </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
+          <select
+            value={tipoListaPdf}
+            onChange={(e) => setTipoListaPdf(e.target.value)}
+            style={{ flex: 1, padding: '9px 10px', border: '1px solid #E8D5CF', borderRadius: '8px', fontSize: '13px', fontFamily: 'Poppins, sans-serif' }}
+          >
+            <option value="ambos">Ambos precios</option>
+            <option value="minorista">Solo minorista</option>
+            <option value="mayorista">Solo mayorista</option>
+          </select>
+          <button
+            className="btn-secundario"
+            style={{ whiteSpace: 'nowrap', padding: '9px 14px', fontSize: '13px' }}
+            onClick={generarListaPrecios}
+            disabled={generandoPdf}
+          >
+            {generandoPdf ? 'Generando...' : '📄 Lista de precios'}
+          </button>
         </div>
 
         <h3 style={{ fontSize: '15px', margin: '20px 0 10px', color: '#4A2C2A' }}>

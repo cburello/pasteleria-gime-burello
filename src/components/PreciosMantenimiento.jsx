@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { generarListaPreciosPdf } from '../lib/listaPreciosPdf'
 
 function fechaLocalHoy() {
   const hoy = new Date()
@@ -26,6 +27,7 @@ function PreciosMantenimiento() {
 
   const [coefMinorista, setCoefMinorista] = useState('1.00')
   const [coefMayorista, setCoefMayorista] = useState('1.00')
+  const [tipoListaPdf, setTipoListaPdf] = useState('ambos')
 
   useEffect(() => {
     cargarDatos()
@@ -218,6 +220,19 @@ function PreciosMantenimiento() {
     cargarDatos()
   }
 
+  function generarPdf() {
+    const filasPdf = filas.map((f) => ({
+      descripcion: f.descripcion,
+      minorista: f.minoristaNuevo !== '' && !isNaN(parseFloat(f.minoristaNuevo))
+        ? parseFloat(f.minoristaNuevo)
+        : null,
+      mayorista: f.mayoristaNuevo !== '' && !isNaN(parseFloat(f.mayoristaNuevo))
+        ? parseFloat(f.mayoristaNuevo)
+        : null,
+    }))
+    generarListaPreciosPdf(filasPdf, tipoListaPdf)
+  }
+
   return (
     <div className="modulo">
       <h2>Mantenimiento de Precios</h2>
@@ -255,6 +270,18 @@ function PreciosMantenimiento() {
           <button type="button" className="btn-secundario" onClick={restablecer}>
             ↩️ Restablecer
           </button>
+          <select
+            value={tipoListaPdf}
+            onChange={(e) => setTipoListaPdf(e.target.value)}
+            style={{ padding: '9px 10px', border: '1px solid #E8D5CF', borderRadius: '8px', fontSize: '13px' }}
+          >
+            <option value="ambos">PDF: Ambos precios</option>
+            <option value="minorista">PDF: Solo minorista</option>
+            <option value="mayorista">PDF: Solo mayorista</option>
+          </select>
+          <button type="button" className="btn-secundario" onClick={generarPdf}>
+            📄 Generar PDF
+          </button>
           <button
             type="button"
             className="btn-primario"
@@ -276,21 +303,17 @@ function PreciosMantenimiento() {
           <table className="tabla">
             <thead>
               <tr>
-                <th rowSpan="2" style={{ verticalAlign: 'bottom' }}>Producto</th>
-                <th colSpan="3" style={{ backgroundColor: '#FBE4DD', color: '#993C1D', textAlign: 'center' }}>
-                  Minorista
-                </th>
-                <th colSpan="3" style={{ backgroundColor: '#EDE9FE', color: '#5B21B6', textAlign: 'center' }}>
-                  Mayorista
-                </th>
+                <th rowSpan="2" style={{ verticalAlign: 'bottom', padding: '6px 8px', fontSize: '11px' }}>Producto</th>
+                <th colSpan="3" style={{ backgroundColor: '#FBE4DD', color: '#993C1D', textAlign: 'center', padding: '4px 8px', fontSize: '11px' }}>Minorista</th>
+                <th colSpan="3" style={{ backgroundColor: '#EDE9FE', color: '#5B21B6', textAlign: 'center', padding: '4px 8px', fontSize: '11px' }}>Mayorista</th>
               </tr>
               <tr>
-                <th style={{ backgroundColor: '#FBE4DD', color: '#993C1D' }}>Actual</th>
-                <th style={{ backgroundColor: '#FBE4DD', color: '#993C1D' }}>Nuevo</th>
-                <th style={{ backgroundColor: '#FBE4DD', color: '#993C1D' }}>Δ</th>
-                <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }}>Actual</th>
-                <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }}>Nuevo</th>
-                <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }}>Δ</th>
+                <th style={{ backgroundColor: '#FBE4DD', color: '#993C1D', padding: '4px 8px', fontSize: '10px' }}>Actual</th>
+                <th style={{ backgroundColor: '#FBE4DD', color: '#993C1D', padding: '4px 8px', fontSize: '10px' }}>Nuevo</th>
+                <th style={{ backgroundColor: '#FBE4DD', color: '#993C1D', padding: '4px 8px', fontSize: '10px' }}>Δ</th>
+                <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6', padding: '4px 8px', fontSize: '10px' }}>Actual</th>
+                <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6', padding: '4px 8px', fontSize: '10px' }}>Nuevo</th>
+                <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6', padding: '4px 8px', fontSize: '10px' }}>Δ</th>
               </tr>
             </thead>
             <tbody>
@@ -305,18 +328,18 @@ function PreciosMantenimiento() {
                   (f.mayoristaActual === null && f.mayoristaNuevo !== '' && !isNaN(parseFloat(f.mayoristaNuevo)))
                 return (
                   <tr key={f.id_producto}>
-                    <td><strong>{f.descripcion}</strong></td>
-                    <td style={{ color: '#8A6A66' }}>
+                    <td style={{ padding: '5px 8px', fontSize: '13px' }}><strong>{f.descripcion}</strong></td>
+                    <td style={{ color: '#8A6A66', padding: '5px 8px', fontSize: '12px' }}>
                       {f.minoristaActual !== null ? `$${formatearMoneda(f.minoristaActual)}` : '—'}
                     </td>
-                    <td>
+                    <td style={{ padding: '4px 8px' }}>
                       <input
                         type="number"
                         step="0.01"
                         value={f.minoristaNuevo}
                         onChange={(e) => editarFila(f.id_producto, 'minoristaNuevo', e.target.value)}
                         style={{
-                          width: '100px', padding: '5px 8px', borderRadius: '6px', fontSize: '13px',
+                          width: '90px', padding: '3px 6px', borderRadius: '6px', fontSize: '12px',
                           fontWeight: 600,
                           border: cambioMin ? '1.5px solid #E8765C' : '1px solid #E8D5CF',
                           backgroundColor: cambioMin ? '#FFF5F2' : 'white',
@@ -324,13 +347,13 @@ function PreciosMantenimiento() {
                         }}
                       />
                     </td>
-                    <td style={{ fontSize: '12px', fontWeight: 600, color: deltaMin > 0 ? '#2D6A35' : '#C0392B' }}>
+                    <td style={{ fontSize: '11px', fontWeight: 600, padding: '4px 6px', color: deltaMin > 0 ? '#2D6A35' : '#C0392B' }}>
                       {deltaMin !== null ? `${deltaMin > 0 ? '+' : ''}${deltaMin.toFixed(1)}%` : ''}
                     </td>
-                    <td style={{ color: '#8A6A66' }}>
+                    <td style={{ color: '#8A6A66', padding: '5px 8px', fontSize: '12px' }}>
                       {f.mayoristaActual !== null ? `$${formatearMoneda(f.mayoristaActual)}` : '—'}
                     </td>
-                    <td>
+                    <td style={{ padding: '4px 8px' }}>
                       <input
                         type="number"
                         step="0.01"
@@ -338,7 +361,7 @@ function PreciosMantenimiento() {
                         placeholder="—"
                         onChange={(e) => editarFila(f.id_producto, 'mayoristaNuevo', e.target.value)}
                         style={{
-                          width: '100px', padding: '5px 8px', borderRadius: '6px', fontSize: '13px',
+                          width: '90px', padding: '3px 6px', borderRadius: '6px', fontSize: '12px',
                           fontWeight: 600,
                           border: cambioMay ? '1.5px solid #7C3AED' : '1px solid #E8D5CF',
                           backgroundColor: cambioMay ? '#F5F0FF' : 'white',
@@ -346,7 +369,7 @@ function PreciosMantenimiento() {
                         }}
                       />
                     </td>
-                    <td style={{ fontSize: '12px', fontWeight: 600, color: deltaMay > 0 ? '#2D6A35' : '#C0392B' }}>
+                    <td style={{ fontSize: '11px', fontWeight: 600, padding: '4px 6px', color: deltaMay > 0 ? '#2D6A35' : '#C0392B' }}>
                       {deltaMay !== null ? `${deltaMay > 0 ? '+' : ''}${deltaMay.toFixed(1)}%` : ''}
                     </td>
                   </tr>
