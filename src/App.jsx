@@ -8,6 +8,7 @@ import MateriasPrimas from './components/MateriasPrimas'
 import Recetas from './components/Recetas'
 import Productos from './components/Productos'
 import Combos from './components/Combos'
+import Secciones from './components/Secciones'
 import Clientes from './components/Clientes'
 import Pedidos from './components/Pedidos'
 import Informes from './components/Informes'
@@ -18,7 +19,6 @@ import MenuPrincipal from './components/MenuPrincipal'
 import Ingresos from './components/Ingresos'
 import Retiros from './components/Retiros'
 import Resultados from './components/Resultados'
-import PreciosMantenimiento from './components/PreciosMantenimiento'
 
 function App() {
 const [sesion, setSesion] = useState(null)
@@ -94,7 +94,7 @@ const [sesion, setSesion] = useState(null)
 <header className="app-header">
         <div className="app-header-marca">
           <img src={logo} alt="Gime Burello Pastelería" className="app-logo" />
-          <h1>Gime Burello Pasteleria<span>Pastelería</span></h1>
+          <h1>Gime Burello <span>Pastelería</span></h1>
         </div>
         <div className="header-acciones">
           <button className="btn-cambiar-password" onClick={() => setMostrarCambiarPassword(true)}>
@@ -118,7 +118,7 @@ const [sesion, setSesion] = useState(null)
         {paginaActual === 'recetas' && <Recetas />}
         {paginaActual === 'productos' && <Productos />}
         {paginaActual === 'combos' && <Combos />}
-        {paginaActual === 'preciosMantenimiento' && <PreciosMantenimiento />}
+        {paginaActual === 'secciones' && <Secciones />}
         {paginaActual === 'clientes' && <Clientes />}
         {paginaActual === 'pedidos' && (
           <Pedidos idPedidoAbrir={idPedidoAbrir} onPedidoAbierto={() => setIdPedidoAbrir(null)} />

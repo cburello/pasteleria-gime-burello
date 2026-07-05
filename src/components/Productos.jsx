@@ -162,6 +162,16 @@ function DetalleProducto({ producto, onVolver }) {
   const [coeficiente, setCoeficiente] = useState(producto.coeficiente_ganancia)
   const [guardandoCabecera, setGuardandoCabecera] = useState(false)
 
+  // Campos de publicación web
+  const [idSeccion, setIdSeccion] = useState(producto.id_seccion || '')
+  const [fraseVenta, setFraseVenta] = useState(producto.frase_venta || '')
+  const [textoWeb, setTextoWeb] = useState(producto.texto_web || '')
+  const [imagenUrl, setImagenUrl] = useState(producto.imagen_url || '')
+  const [visibleWeb, setVisibleWeb] = useState(producto.visible_web || false)
+  const [ordenWeb, setOrdenWeb] = useState(producto.orden_web ?? '')
+  const [secciones, setSecciones] = useState([])
+  const [subiendoImagen, setSubiendoImagen] = useState(false)
+
   const [recetas, setRecetas] = useState([])
   const [textoBuscarReceta, setTextoBuscarReceta] = useState('')
   const [recetaSeleccionada, setRecetaSeleccionada] = useState(null)
@@ -175,12 +185,12 @@ function DetalleProducto({ producto, onVolver }) {
   const [fechaInicioPrecio, setFechaInicioPrecio] = useState(new Date().toISOString().slice(0, 10))
   const [fechaFinPrecio, setFechaFinPrecio] = useState('3000-12-31')
   const [precioVentaManual, setPrecioVentaManual] = useState('')
-  const [precioMayoristaManual, setPrecioMayoristaManual] = useState('')
   const [guardandoPrecio, setGuardandoPrecio] = useState(false)
   const [editandoPrecioId, setEditandoPrecioId] = useState(null)
 
   useEffect(() => {
     cargarRecetas()
+    cargarSecciones()
     if (producto.id_producto) {
       cargarPrecios()
     } else {
@@ -227,6 +237,37 @@ function DetalleProducto({ producto, onVolver }) {
         setTextoBuscarReceta(recetaActual.descripcion)
       }
     }
+  }
+
+  async function cargarSecciones() {
+    const { data } = await supabase
+      .from('secciones')
+      .select('id_seccion, nombre')
+      .eq('nivel', 'rubro')
+      .order('orden')
+    setSecciones(data || [])
+  }
+
+  async function subirImagen(file) {
+    if (!file) return
+    if (!producto.id_producto) {
+      alert('Guardá primero los datos generales para poder subir la imagen.')
+      return
+    }
+    setSubiendoImagen(true)
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const ruta = `productos/${producto.id_producto}-${Date.now()}.${ext}`
+    const { error } = await supabase.storage
+      .from('catalogo')
+      .upload(ruta, file, { upsert: true, contentType: file.type })
+    if (error) {
+      alert('Error al subir la imagen: ' + error.message)
+      setSubiendoImagen(false)
+      return
+    }
+    const { data } = supabase.storage.from('catalogo').getPublicUrl(ruta)
+    setImagenUrl(data.publicUrl)
+    setSubiendoImagen(false)
   }
 
   function extraerCantidadPresentacion(presentacion) {
@@ -310,6 +351,12 @@ function DetalleProducto({ producto, onVolver }) {
       descripcion,
       id_receta: idReceta,
       coeficiente_ganancia: parseFloat(coeficiente),
+      id_seccion: idSeccion || null,
+      frase_venta: fraseVenta.trim() || null,
+      texto_web: textoWeb.trim() || null,
+      imagen_url: imagenUrl || null,
+      visible_web: visibleWeb,
+      orden_web: ordenWeb === '' || ordenWeb === null ? null : parseInt(ordenWeb),
     }
 
     let idResultante = producto.id_producto
@@ -379,7 +426,6 @@ function DetalleProducto({ producto, onVolver }) {
     setFechaInicioPrecio(new Date().toISOString().slice(0, 10))
     setFechaFinPrecio('3000-12-31')
     setPrecioVentaManual(precioTeoricoSimulado !== null ? precioTeoricoSimulado.toFixed(2) : '')
-    setPrecioMayoristaManual('')
   }
 
   function iniciarEdicionPrecio(p) {
@@ -387,7 +433,6 @@ function DetalleProducto({ producto, onVolver }) {
     setFechaInicioPrecio(p.fecha_inicio?.slice(0, 10) || '')
     setFechaFinPrecio(p.fecha_fin?.slice(0, 10) || '3000-12-31')
     setPrecioVentaManual(p.precio_venta)
-    setPrecioMayoristaManual(p.precio_mayorista || '')
   }
 
   async function guardarPrecio() {
@@ -438,7 +483,6 @@ function DetalleProducto({ producto, onVolver }) {
       fecha_fin: finEfectivo,
       precio_venta: parseFloat(precioVentaManual),
       precio_teorico: precioTeoricoSimulado !== null ? parseFloat(precioTeoricoSimulado.toFixed(2)) : null,
-      precio_mayorista: precioMayoristaManual ? parseFloat(precioMayoristaManual) : null,
     }
 
     let resultado
@@ -457,7 +501,6 @@ function DetalleProducto({ producto, onVolver }) {
       alert('Precio guardado correctamente.' + avisoAjuste)
       setEditandoPrecioId(null)
       setPrecioVentaManual('')
-      setPrecioMayoristaManual('')
       cargarPrecios()
     }
 
@@ -550,6 +593,117 @@ function DetalleProducto({ producto, onVolver }) {
         </div>
       </div>
 
+      <div className="subseccion">
+        <h3>Publicación web</h3>
+        <div className="ayuda-vigencia">
+          Controla cómo aparece este producto en gimeburellopasteleria.com.ar. El precio publicado es el
+          precio de venta vigente; si no hay ninguno vigente, la web muestra “Consultar”.
+        </div>
+
+        <div className="formulario formulario-costos">
+          <div className="campo" style={{ flex: 2 }}>
+            <label>Rubro</label>
+            <select value={idSeccion} onChange={(e) => setIdSeccion(e.target.value)}>
+              <option value="">— Sin rubro (no se publica) —</option>
+              {secciones.map((s) => (
+                <option key={s.id_seccion} value={s.id_seccion}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="campo" style={{ flex: 2 }}>
+            <label>Frase de venta</label>
+            <input
+              type="text"
+              placeholder="Ej: El clásico que nunca falla."
+              value={fraseVenta}
+              onChange={(e) => setFraseVenta(e.target.value)}
+            />
+          </div>
+
+          <div className="campo">
+            <label>Orden</label>
+            <input
+              type="number"
+              placeholder="1"
+              value={ordenWeb}
+              onChange={(e) => setOrdenWeb(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="formulario formulario-costos">
+          <div className="campo" style={{ flex: 3 }}>
+            <label>Texto web</label>
+            <textarea
+              rows={3}
+              placeholder="Descripción que se muestra en la tarjeta del producto."
+              value={textoWeb}
+              onChange={(e) => setTextoWeb(e.target.value)}
+              style={{
+                padding: '10px 12px',
+                border: '1px solid #E8D5CF',
+                borderRadius: 8,
+                fontFamily: "'Poppins', sans-serif",
+                fontSize: 14,
+                width: '100%',
+                resize: 'vertical',
+              }}
+            />
+          </div>
+
+          <div className="campo" style={{ flex: 2 }}>
+            <label>Imagen</label>
+            {producto.id_producto ? (
+              <>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={subiendoImagen}
+                  onChange={(e) => subirImagen(e.target.files?.[0])}
+                />
+                {subiendoImagen && (
+                  <span style={{ color: '#8A6A66', fontSize: 13 }}>Subiendo imagen...</span>
+                )}
+                {imagenUrl && (
+                  <img
+                    src={imagenUrl}
+                    alt="Imagen del producto"
+                    style={{ marginTop: 8, width: 120, height: 90, objectFit: 'cover', borderRadius: 8 }}
+                  />
+                )}
+              </>
+            ) : (
+              <span style={{ color: '#8A6A66', fontSize: 13 }}>
+                Guardá el producto para poder subir una imagen.
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="formulario formulario-costos">
+          <div className="campo">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={visibleWeb}
+                onChange={(e) => setVisibleWeb(e.target.checked)}
+                style={{ width: 'auto' }}
+              />
+              Publicar en la web
+            </label>
+          </div>
+
+          <div className="campo-acciones">
+            <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardandoCabecera}>
+              {guardandoCabecera ? 'Guardando...' : 'Guardar publicación web'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {idReceta && (
         <div className="subseccion">
           <h3>Simulador de precio</h3>
@@ -622,17 +776,6 @@ function DetalleProducto({ producto, onVolver }) {
                 onChange={(e) => setPrecioVentaManual(e.target.value)}
               />
             </div>
-            <div className="campo">
-              <label style={{ color: '#5B21B6' }}>🏪 Precio mayorista (opcional)</label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={precioMayoristaManual}
-                onChange={(e) => setPrecioMayoristaManual(e.target.value)}
-                style={{ borderColor: '#C4B5FD' }}
-              />
-            </div>
             <div className="campo-acciones">
               <button className="btn-secundario" type="button" onClick={iniciarNuevoPrecio}>
                 Usar precio sugerido
@@ -653,7 +796,6 @@ function DetalleProducto({ producto, onVolver }) {
                     <th>Desde</th>
                     <th>Hasta</th>
                     <th>Precio venta</th>
-                    <th>Precio mayorista</th>
                     <th>Precio teórico (al momento)</th>
                     <th>Acciones</th>
                   </tr>
@@ -661,7 +803,7 @@ function DetalleProducto({ producto, onVolver }) {
                 <tbody>
                   {precios.length === 0 && (
                     <tr>
-                      <td colSpan="6">No hay precios registrados.</td>
+                      <td colSpan="5">No hay precios registrados.</td>
                     </tr>
                   )}
                   {precios.map((p) => (
@@ -669,9 +811,6 @@ function DetalleProducto({ producto, onVolver }) {
                       <td>{formatearFecha(p.fecha_inicio)}</td>
                       <td>{p.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(p.fecha_fin)}</td>
                       <td>${formatearMoneda(p.precio_venta)}</td>
-                      <td>{p.precio_mayorista ? (
-                        <span style={{ color: '#5B21B6', fontWeight: 600 }}>${formatearMoneda(p.precio_mayorista)}</span>
-                      ) : '—'}</td>
                       <td>{p.precio_teorico ? `$${formatearMoneda(p.precio_teorico)}` : '—'}</td>
                       <td>
                         <button className="btn-link" onClick={() => iniciarEdicionPrecio(p)}>

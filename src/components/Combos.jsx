@@ -181,6 +181,16 @@ function DetalleCombo({ combo, onVolver }) {
   const [fechaFin, setFechaFin] = useState(combo.fecha_fin?.slice(0, 10) || '3000-12-31')
   const [guardando, setGuardando] = useState(false)
 
+  // Campos de publicación web
+  const [idSeccion, setIdSeccion] = useState(combo.id_seccion || '')
+  const [fraseVenta, setFraseVenta] = useState(combo.frase_venta || '')
+  const [textoWeb, setTextoWeb] = useState(combo.texto_web || '')
+  const [imagenUrl, setImagenUrl] = useState(combo.imagen_url || '')
+  const [visibleWeb, setVisibleWeb] = useState(combo.visible_web || false)
+  const [ordenWeb, setOrdenWeb] = useState(combo.orden_web ?? '')
+  const [secciones, setSecciones] = useState([])
+  const [subiendoImagen, setSubiendoImagen] = useState(false)
+
   const [combosExistentes, setCombosExistentes] = useState([])
 
   const [productosCombo, setProductosCombo] = useState([])
@@ -194,6 +204,7 @@ function DetalleCombo({ combo, onVolver }) {
   useEffect(() => {
     cargarCombosExistentes()
     cargarProductosDisponibles()
+    cargarSecciones()
     if (combo.id_combo) {
       cargarProductosDelCombo()
     } else {
@@ -225,6 +236,37 @@ function DetalleCombo({ combo, onVolver }) {
   async function cargarProductosDisponibles() {
     const { data } = await supabase.from('productos').select('*').order('descripcion')
     setProductosDisponibles(data || [])
+  }
+
+  async function cargarSecciones() {
+    const { data } = await supabase
+      .from('secciones')
+      .select('id_seccion, nombre')
+      .eq('nivel', 'rubro')
+      .order('orden')
+    setSecciones(data || [])
+  }
+
+  async function subirImagen(file) {
+    if (!file) return
+    if (!combo.id_combo) {
+      alert('Guardá primero el combo para poder subir la imagen.')
+      return
+    }
+    setSubiendoImagen(true)
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const ruta = `combos/${combo.id_combo}-${Date.now()}.${ext}`
+    const { error } = await supabase.storage
+      .from('catalogo')
+      .upload(ruta, file, { upsert: true, contentType: file.type })
+    if (error) {
+      alert('Error al subir la imagen: ' + error.message)
+      setSubiendoImagen(false)
+      return
+    }
+    const { data } = supabase.storage.from('catalogo').getPublicUrl(ruta)
+    setImagenUrl(data.publicUrl)
+    setSubiendoImagen(false)
   }
 
   function extraerCantidadPresentacion(presentacion) {
@@ -464,6 +506,12 @@ function DetalleCombo({ combo, onVolver }) {
       precio: parseFloat(precio),
       fecha_inicio: fechaInicio,
       fecha_fin: finEfectivo,
+      id_seccion: idSeccion || null,
+      frase_venta: fraseVenta.trim() || null,
+      texto_web: textoWeb.trim() || null,
+      imagen_url: imagenUrl || null,
+      visible_web: visibleWeb,
+      orden_web: ordenWeb === '' || ordenWeb === null ? null : parseInt(ordenWeb),
     }
 
     let idResultante = combo.id_combo
@@ -551,6 +599,117 @@ function DetalleCombo({ combo, onVolver }) {
             )}
             <button className="btn-primario" onClick={handleGuardarCombo} disabled={guardando}>
               {guardando ? 'Guardando...' : 'Guardar combo'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="subseccion">
+        <h3>Publicación web</h3>
+        <div className="ayuda-vigencia">
+          Controla cómo aparece este combo en gimeburellopasteleria.com.ar. El precio publicado es el precio
+          del combo mientras esté dentro de su vigencia; fuera de vigencia la web muestra “Consultar”.
+        </div>
+
+        <div className="formulario formulario-costos">
+          <div className="campo" style={{ flex: 2 }}>
+            <label>Rubro</label>
+            <select value={idSeccion} onChange={(e) => setIdSeccion(e.target.value)}>
+              <option value="">— Sin rubro (no se publica) —</option>
+              {secciones.map((s) => (
+                <option key={s.id_seccion} value={s.id_seccion}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="campo" style={{ flex: 2 }}>
+            <label>Frase de venta</label>
+            <input
+              type="text"
+              placeholder="Ej: Todo listo para regalar."
+              value={fraseVenta}
+              onChange={(e) => setFraseVenta(e.target.value)}
+            />
+          </div>
+
+          <div className="campo">
+            <label>Orden</label>
+            <input
+              type="number"
+              placeholder="1"
+              value={ordenWeb}
+              onChange={(e) => setOrdenWeb(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="formulario formulario-costos">
+          <div className="campo" style={{ flex: 3 }}>
+            <label>Texto web</label>
+            <textarea
+              rows={3}
+              placeholder="Descripción que se muestra en la tarjeta del combo."
+              value={textoWeb}
+              onChange={(e) => setTextoWeb(e.target.value)}
+              style={{
+                padding: '10px 12px',
+                border: '1px solid #E8D5CF',
+                borderRadius: 8,
+                fontFamily: "'Poppins', sans-serif",
+                fontSize: 14,
+                width: '100%',
+                resize: 'vertical',
+              }}
+            />
+          </div>
+
+          <div className="campo" style={{ flex: 2 }}>
+            <label>Imagen</label>
+            {combo.id_combo ? (
+              <>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={subiendoImagen}
+                  onChange={(e) => subirImagen(e.target.files?.[0])}
+                />
+                {subiendoImagen && (
+                  <span style={{ color: '#8A6A66', fontSize: 13 }}>Subiendo imagen...</span>
+                )}
+                {imagenUrl && (
+                  <img
+                    src={imagenUrl}
+                    alt="Imagen del combo"
+                    style={{ marginTop: 8, width: 120, height: 90, objectFit: 'cover', borderRadius: 8 }}
+                  />
+                )}
+              </>
+            ) : (
+              <span style={{ color: '#8A6A66', fontSize: 13 }}>
+                Guardá el combo para poder subir una imagen.
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="formulario formulario-costos">
+          <div className="campo">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={visibleWeb}
+                onChange={(e) => setVisibleWeb(e.target.checked)}
+                style={{ width: 'auto' }}
+              />
+              Publicar en la web
+            </label>
+          </div>
+
+          <div className="campo-acciones">
+            <button className="btn-primario" onClick={handleGuardarCombo} disabled={guardando}>
+              {guardando ? 'Guardando...' : 'Guardar publicación web'}
             </button>
           </div>
         </div>
