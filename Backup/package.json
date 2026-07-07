@@ -1,18 +1,15 @@
 {
-  "name": "supabase-backup",
+  "name": "pasteleria-backup",
   "version": "1.0.0",
-  "description": "Resguardo automatico de todas las tablas de un proyecto Supabase a JSON + CSV, empaquetado en .zip",
-  "main": "backup.js",
   "type": "module",
+  "private": true,
   "scripts": {
-    "backup": "node backup.js"
+    "backup": "node backup.js",
+    "restore": "node restore.js",
+    "backup-storage": "node storage-backup.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@supabase/supabase-js": "^2.108.2",
-    "archiver": "^8.0.0",
-    "dotenv": "^17.4.2"
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5"
   }
 }

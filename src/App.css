@@ -1338,3 +1338,130 @@ margin-top: 16px;
 .dashboard-fila-monto.cobrado {
   color: #2D6A35;
 }
+/* ============================================
+   COBRO RÁPIDO MOBILE (hoja inferior)
+   Agregar este bloque completo AL FINAL de App.css
+   ============================================ */
+ 
+.cobro-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(74, 44, 42, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+ 
+.cobro-sheet {
+  background: #fff;
+  width: 100%;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px 24px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: cobroSubir 0.22s ease-out;
+}
+ 
+@keyframes cobroSubir {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+ 
+.cobro-handle {
+  width: 38px;
+  height: 4px;
+  background: #E8D5CF;
+  border-radius: 2px;
+  margin: 0 auto 12px;
+}
+ 
+.cobro-titulo {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  color: #4A2C2A;
+  margin: 0;
+}
+ 
+.cobro-sub {
+  font-size: 13px;
+  color: #8A6A66;
+  margin: 2px 0 14px;
+}
+ 
+.cobro-label {
+  font-size: 12px;
+  color: #8A6A66;
+  margin: 12px 0 6px;
+}
+ 
+.cobro-opciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+ 
+.cobro-opcion {
+  flex: 1;
+  min-width: 90px;
+  text-align: center;
+  font-size: 13px;
+  padding: 10px 0;
+  border-radius: 10px;
+  border: 1px solid #E8D5CF;
+  background: #fff;
+  color: #8A6A66;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+}
+ 
+.cobro-opcion.activa {
+  background: #FAECE7;
+  border-color: #E8765C;
+  color: #993C1D;
+  font-weight: 600;
+}
+ 
+.cobro-importe {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #E8D5CF;
+  border-radius: 10px;
+  font-size: 16px;
+  font-family: 'Poppins', sans-serif;
+  color: #4A2C2A;
+}
+ 
+.cobro-confirmar {
+  width: 100%;
+  margin-top: 18px;
+  background: #E8765C;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+}
+ 
+.cobro-confirmar:hover {
+  background: #D4624A;
+}
+ 
+.cobro-confirmar:disabled {
+  opacity: 0.6;
+}
+ 
+.cobro-cancelar {
+  width: 100%;
+  margin-top: 8px;
+  background: none;
+  border: none;
+  color: #8A6A66;
+  font-size: 13px;
+  padding: 8px 0;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+}

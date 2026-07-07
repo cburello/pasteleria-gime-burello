@@ -33,8 +33,17 @@ function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
 
+  // --- Cobro rápido desde la lista (mobile) ---
+  const [pedidoCobro, setPedidoCobro] = useState(null)
+  const [tipoPagoRapido, setTipoPagoRapido] = useState('PT')
+  const [importePagoRapido, setImportePagoRapido] = useState('')
+  const [medioPagoRapido, setMedioPagoRapido] = useState('')
+  const [mediosPagoLista, setMediosPagoLista] = useState([])
+  const [guardandoPagoRapido, setGuardandoPagoRapido] = useState(false)
+
   useEffect(() => {
     cargarPedidos()
+    cargarMediosPagoLista()
   }, [])
 
   useEffect(() => {
@@ -171,6 +180,115 @@ function formatearFecha(fecha) {
     return pedido.clientes?.descripcion || pedido.descripcion || '—'
   }
 
+  // --- Funciones del cobro rápido (mobile) ---
+  async function cargarMediosPagoLista() {
+    const { data } = await supabase.from('medios_pagos').select('*').order('descripcion')
+    setMediosPagoLista(data || [])
+  }
+
+  function abrirCobro(pedido, e) {
+    e.stopPropagation()
+    setPedidoCobro(pedido)
+    setTipoPagoRapido('PT')
+    setImportePagoRapido(pedido.pendiente.toFixed(2))
+    setMedioPagoRapido(mediosPagoLista.length > 0 ? mediosPagoLista[0].descripcion : '')
+  }
+
+  function manejarTipoPagoRapido(tipo) {
+    setTipoPagoRapido(tipo)
+    if ((tipo === 'PP' || tipo === 'PT') && pedidoCobro) {
+      setImportePagoRapido(pedidoCobro.pendiente.toFixed(2))
+    } else {
+      setImportePagoRapido('')
+    }
+  }
+
+  async function periodoCerradoLista(fechaStr, descripcionMedioPago) {
+    const periodo = fechaStr.slice(0, 7) + '-01'
+
+    const { data: medioPagoData } = await supabase
+      .from('medios_pagos')
+      .select('id_medio_pago')
+      .eq('descripcion', descripcionMedioPago)
+      .limit(1)
+
+    if (!medioPagoData || medioPagoData.length === 0) return false
+
+    const { data, error } = await supabase
+      .from('resultados')
+      .select('id_resultado')
+      .eq('periodo', periodo)
+      .eq('id_medio_pago', medioPagoData[0].id_medio_pago)
+      .limit(1)
+
+    if (error) return false
+    return data && data.length > 0
+  }
+
+  async function registrarPagoRapido() {
+    if (!pedidoCobro) return
+
+    const saldo = pedidoCobro.pendiente
+    const total = pedidoCobro.total
+    const importe = parseFloat(importePagoRapido)
+
+    if (!importePagoRapido || isNaN(importe) || importe <= 0) {
+      alert('Ingresá un importe válido')
+      return
+    }
+    if (!medioPagoRapido) {
+      alert('Elegí un medio de pago')
+      return
+    }
+    if (tipoPagoRapido === 'SE' && importe >= total) {
+      alert('La seña debe ser menor al total del pedido.')
+      return
+    }
+    if (importe > saldo + 0.001) {
+      alert(`El importe no puede superar el saldo pendiente ($${formatearMoneda(saldo)}).`)
+      return
+    }
+
+    setGuardandoPagoRapido(true)
+
+    const fechaHoy = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 10)
+    const cerrado = await periodoCerradoLista(fechaHoy, medioPagoRapido)
+    if (cerrado) {
+      alert('No se puede registrar este pago porque el período correspondiente ya fue cerrado en Resultados.')
+      setGuardandoPagoRapido(false)
+      return
+    }
+
+    const { data: pagosActuales } = await supabase
+      .from('pagos')
+      .select('secuencia')
+      .eq('id_pedido', pedidoCobro.id_pedido)
+      .order('secuencia', { ascending: false })
+      .limit(1)
+
+    const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
+      ? pagosActuales[0].secuencia + 1
+      : 1
+
+    const { error } = await supabase.from('pagos').insert({
+      id_pedido: pedidoCobro.id_pedido,
+      secuencia: siguienteSecuencia,
+      tipo: tipoPagoRapido,
+      importe: importe,
+      medio_pago: medioPagoRapido,
+      fecha_pago: fechaHoy,
+    })
+
+    if (error) {
+      alert('Error al registrar el pago: ' + error.message)
+    } else {
+      alert('✅ Pago registrado correctamente')
+      setPedidoCobro(null)
+      await cargarPedidos()
+    }
+    setGuardandoPagoRapido(false)
+  }
+
   function enviarWhatsapp(pedido, e) {
     e.stopPropagation()
     const tel = pedido.clientes?.telefono || pedido.telefono
@@ -258,6 +376,15 @@ function formatearFecha(fecha) {
                   </span>
                 </div>
                 <div className="tarjeta-pedido-acciones">
+                  {p.pendiente > 0.01 && (
+                    <button
+                      className="btn-link"
+                      style={{ color: '#E8765C', fontWeight: 600 }}
+                      onClick={(e) => abrirCobro(p, e)}
+                    >
+                      💰 Cobrar
+                    </button>
+                  )}
                   {p.clientes?.telefono && (
                     <button
                       className="btn-link"
@@ -285,6 +412,81 @@ function formatearFecha(fecha) {
         <button className="boton-flotante" onClick={iniciarNuevo} aria-label="Nuevo pedido">
           +
         </button>
+
+        {pedidoCobro && (
+          <div className="cobro-overlay" onClick={() => !guardandoPagoRapido && setPedidoCobro(null)}>
+            <div className="cobro-sheet" onClick={(e) => e.stopPropagation()}>
+              <div className="cobro-handle"></div>
+              <p className="cobro-titulo">Cobrar pedido #{pedidoCobro.id_pedido}</p>
+              <p className="cobro-sub">
+                {nombreCliente(pedidoCobro)} · Saldo pendiente:{' '}
+                <strong>${formatearMoneda(pedidoCobro.pendiente)}</strong>
+              </p>
+
+              <p className="cobro-label">Tipo</p>
+              <div className="cobro-opciones">
+                <button
+                  className={`cobro-opcion ${tipoPagoRapido === 'SE' ? 'activa' : ''}`}
+                  onClick={() => manejarTipoPagoRapido('SE')}
+                >
+                  Seña
+                </button>
+                <button
+                  className={`cobro-opcion ${tipoPagoRapido === 'PP' ? 'activa' : ''}`}
+                  onClick={() => manejarTipoPagoRapido('PP')}
+                >
+                  Parcial
+                </button>
+                <button
+                  className={`cobro-opcion ${tipoPagoRapido === 'PT' ? 'activa' : ''}`}
+                  onClick={() => manejarTipoPagoRapido('PT')}
+                >
+                  Saldo restante
+                </button>
+              </div>
+
+              <p className="cobro-label">Importe</p>
+              <input
+                className="cobro-importe"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={importePagoRapido}
+                onChange={(e) => setImportePagoRapido(e.target.value)}
+              />
+
+              <p className="cobro-label">Medio de pago</p>
+              <div className="cobro-opciones">
+                {mediosPagoLista.map((m) => (
+                  <button
+                    key={m.id_medio_pago}
+                    className={`cobro-opcion ${medioPagoRapido === m.descripcion ? 'activa' : ''}`}
+                    onClick={() => setMedioPagoRapido(m.descripcion)}
+                  >
+                    {m.descripcion}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                className="cobro-confirmar"
+                onClick={registrarPagoRapido}
+                disabled={guardandoPagoRapido}
+              >
+                {guardandoPagoRapido
+                  ? 'Registrando...'
+                  : `Registrar pago de $${formatearMoneda(parseFloat(importePagoRapido) || 0)}`}
+              </button>
+              <button
+                className="cobro-cancelar"
+                onClick={() => setPedidoCobro(null)}
+                disabled={guardandoPagoRapido}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
