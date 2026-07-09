@@ -20,6 +20,7 @@ import Retiros from './components/Retiros'
 import Resultados from './components/Resultados'
 import PreciosMantenimiento from './components/PreciosMantenimiento'
 import Secciones from './components/Secciones'
+import PedidosWeb from './components/PedidosWeb'
 
 function App() {
 const [sesion, setSesion] = useState(null)
@@ -125,7 +126,8 @@ const [sesion, setSesion] = useState(null)
         {paginaActual === 'pedidos' && (
           <Pedidos idPedidoAbrir={idPedidoAbrir} onPedidoAbierto={() => setIdPedidoAbrir(null)} />
         )}
-        {paginaActual === 'informes' && <Informes />}
+		{paginaActual === 'informes' && <Informes />}
+        {paginaActual === 'pedidosWeb' && <PedidosWeb />}
         {paginaActual === 'proveedores' && <Proveedores />}        
         {paginaActual === 'gastos' && <Gastos />}
 {paginaActual === 'ingresos' && <Ingresos />}        

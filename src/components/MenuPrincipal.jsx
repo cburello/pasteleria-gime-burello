@@ -36,7 +36,8 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
       label: 'Ventas',
       items: [
         { id: 'clientes', label: 'Clientes' },
-        { id: 'pedidos', label: 'Pedidos' },
+		{ id: 'pedidos', label: 'Pedidos' },
+        { id: 'pedidosWeb', label: 'Pedidos web' },
         { id: 'informes', label: 'Informes' },
       ],
     },
@@ -82,7 +83,8 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
       { id: 'inicio',   label: 'Inicio',   icono: '🏠' },
       { id: 'pedidos',  label: 'Pedidos',  icono: '📦' },
       { id: 'gastos',   label: 'Gastos',   icono: '💸' },
-      { id: 'ingresos', label: 'Ingresos', icono: '💰' },
+	  { id: 'ingresos', label: 'Ingresos', icono: '💰' },
+      { id: 'pedidosWeb', label: 'Web', icono: '🛒' },
     ]
 
     return (
