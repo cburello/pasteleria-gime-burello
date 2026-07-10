@@ -214,8 +214,8 @@ function DetalleProducto({ producto, onVolver }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
-    return new Date(fechaStr).toLocaleDateString('es-AR')
+const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+    return `${dia}/${mes}/${anio}`
   }
 
   function formatearMoneda(valor) {

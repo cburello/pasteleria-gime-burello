@@ -70,8 +70,8 @@ function CostosMateriaPrima({ materiaPrima, onVolver }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-    const f = new Date(fecha)
-    return f.toLocaleDateString('es-AR')
+const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+    return `${dia}/${mes}/${anio}`
   }
 
   async function guardar(e) {

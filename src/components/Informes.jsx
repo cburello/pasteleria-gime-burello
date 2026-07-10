@@ -34,8 +34,8 @@ function formatearFecha(fecha) {
     // Si ya viene con información de hora (timestamp completo), la usamos directo.
     // Si es solo una fecha pura (AAAA-MM-DD), le agregamos hora local para evitar
     // el corrimiento de zona horaria al convertir a Date.
-    const fechaStr = fecha.includes('T') ? fecha : fecha + 'T00:00:00'
-    return new Date(fechaStr).toLocaleDateString('es-AR')
+const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+    return `${dia}/${mes}/${anio}`	
   }
 
   function nombreTipoPago(tipo) {
