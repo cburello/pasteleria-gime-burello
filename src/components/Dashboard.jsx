@@ -22,6 +22,7 @@ function Dashboard({ onAbrirPedido }) {
   const [resumenMes, setResumenMes] = useState({ cantidad: 0, totalFacturado: 0, totalCobrado: 0 })
   const [tipoListaPdf, setTipoListaPdf] = useState('ambos')
   const [generandoPdf, setGenerandoPdf] = useState(false)
+  const [sinCostoVigente, setSinCostoVigente] = useState([])
 
   useEffect(() => {
     cargarDashboard()
@@ -37,7 +38,7 @@ function Dashboard({ onAbrirPedido }) {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+    const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     return `${dia}/${mes}/${anio}`
   }
 
@@ -100,6 +101,23 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       totalCobrado: totalCobradoMes,
     })
 
+    // Materias primas sin costo vigente a la fecha de hoy (hora Argentina)
+    const hoyArg = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 10)
+    const [{ data: materias }, { data: costos }] = await Promise.all([
+      supabase.from('materias_primas').select('id_materia_prima, descripcion'),
+      supabase.from('costos_materia_prima').select('id_materia_prima, fecha_inicio, fecha_fin'),
+    ])
+    const conVigente = new Set(
+      (costos || [])
+        .filter((c) => {
+          const desde = (c.fecha_inicio || '').slice(0, 10)
+          const hasta = (c.fecha_fin || '').slice(0, 10)
+          return desde <= hoyArg && (!hasta || hoyArg <= hasta)
+        })
+        .map((c) => c.id_materia_prima)
+    )
+    setSinCostoVigente((materias || []).filter((m) => !conVigente.has(m.id_materia_prima)))
+
     setCargando(false)
   }
 
@@ -111,6 +129,33 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       alert('No se pudo generar la lista de precios: ' + e.message)
     }
     setGenerandoPdf(false)
+  }
+
+  function alertaSinCosto() {
+    if (sinCostoVigente.length === 0) return null
+    return (
+      <div
+        style={{
+          background: '#FBEFD9',
+          border: '1px solid #E3C77A',
+          borderLeft: '4px solid #C9A227',
+          borderRadius: '10px',
+          padding: '12px 14px',
+          marginBottom: '16px',
+          color: '#6B5310',
+          fontSize: '.88rem',
+          lineHeight: 1.6,
+        }}
+      >
+        <strong>⚠️ {sinCostoVigente.length} materia{sinCostoVigente.length > 1 ? 's' : ''} prima
+        {sinCostoVigente.length > 1 ? 's' : ''} sin costo vigente.</strong> Los precios teóricos que la usen quedan mal calculados
+        hasta que cargues un costo con vigencia a hoy.
+        <div style={{ marginTop: '6px' }}>
+          {sinCostoVigente.slice(0, 8).map((m) => m.descripcion).join(' · ')}
+          {sinCostoVigente.length > 8 ? ` · y ${sinCostoVigente.length - 8} más` : ''}
+        </div>
+      </div>
+    )
   }
 
   if (cargando) {
@@ -128,6 +173,8 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
         <div className="pedidos-mobile-header">
           <h2>Inicio</h2>
         </div>
+
+        {alertaSinCosto()}
 
         <div className="mobile-resumen-card">
           <div className="nombre" style={{ marginBottom: '8px' }}>Resumen del mes</div>
@@ -222,6 +269,8 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   return (
     <div className="modulo">
       <h2>Inicio</h2>
+
+      {alertaSinCosto()}
 
       <div className="subseccion">
         <h3 className="dashboard-subtitulo">Resumen del mes en curso</h3>

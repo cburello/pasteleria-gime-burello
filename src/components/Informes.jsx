@@ -20,6 +20,9 @@ function Informes() {
   const [fechaHasta, setFechaHasta] = useState(fechaHoy())
   const [tipoInforme, setTipoInforme] = useState('detallado') // 'detallado' o 'totales'
   const [generando, setGenerando] = useState(false)
+  const [ordenRanking, setOrdenRanking] = useState('cant') // 'cant' | 'fact'
+  const [ranking, setRanking] = useState(null)             // null = todavia no consulto
+  const [consultando, setConsultando] = useState(false)
 
   function formatearMoneda(valor) {
     if (valor === null || valor === undefined || isNaN(valor)) return '0,00'
@@ -31,11 +34,8 @@ function Informes() {
 
 function formatearFecha(fecha) {
     if (!fecha) return ''
-    // Si ya viene con información de hora (timestamp completo), la usamos directo.
-    // Si es solo una fecha pura (AAAA-MM-DD), le agregamos hora local para evitar
-    // el corrimiento de zona horaria al convertir a Date.
-const [anio, mes, dia] = fecha.slice(0, 10).split('-')
-    return `${dia}/${mes}/${anio}`	
+    const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+    return `${dia}/${mes}/${anio}`
   }
 
   function nombreTipoPago(tipo) {
@@ -290,6 +290,131 @@ autoTable(doc, {
     doc.save(`Informe_Totales_${fechaDesde}_a_${fechaHasta}.pdf`)
   }
 
+  // ===== MAS VENDIDOS =====
+  async function obtenerRanking() {
+    const { data: pedidos, error } = await supabase
+      .from('pedidos')
+      .select('id_pedido')
+      .gte('fecha_pedido', fechaDesde)
+      .lte('fecha_pedido', fechaHasta)
+
+    if (error) {
+      alert('Error al obtener los pedidos: ' + error.message)
+      return null
+    }
+    if (!pedidos || pedidos.length === 0) return []
+
+    const ids = pedidos.map((p) => p.id_pedido)
+
+    const [{ data: detalles }, { data: productos }, { data: combos }] = await Promise.all([
+      supabase.from('detalle_pedido').select('*').in('id_pedido', ids),
+      supabase.from('productos').select('id_producto, descripcion'),
+      supabase.from('combos').select('id_combo, descripcion'),
+    ])
+
+    const nombreProd = {}
+    ;(productos || []).forEach((x) => { nombreProd[x.id_producto] = x.descripcion })
+    const nombreCombo = {}
+    ;(combos || []).forEach((x) => { nombreCombo[x.id_combo] = x.descripcion })
+
+    const acum = {}
+    ;(detalles || []).forEach((d) => {
+      const esCombo = d.id_combo != null
+      const clave = esCombo ? 'c' + d.id_combo : 'p' + d.id_producto
+      const nombre = esCombo
+        ? (nombreCombo[d.id_combo] || 'Combo ' + d.id_combo)
+        : (nombreProd[d.id_producto] || 'Producto ' + d.id_producto)
+      const cantidad = parseFloat(d.cantidad || 0)
+      const facturacion = cantidad * parseFloat(d.precio_venta || 0)
+      if (!acum[clave]) acum[clave] = { nombre, tipo: esCombo ? 'combo' : 'producto', cant: 0, fact: 0 }
+      acum[clave].cant += cantidad
+      acum[clave].fact += facturacion
+    })
+
+    return Object.values(acum)
+  }
+
+  function ordenar(lista) {
+    return [...lista].sort((a, b) => (ordenRanking === 'cant' ? b.cant - a.cant : b.fact - a.fact))
+  }
+
+  async function handleConsultarRanking() {
+    if (!fechaDesde || !fechaHasta) {
+      alert('Completá ambas fechas.')
+      return
+    }
+    if (fechaDesde > fechaHasta) {
+      alert('La fecha desde no puede ser posterior a la fecha hasta.')
+      return
+    }
+    setConsultando(true)
+    const datos = await obtenerRanking()
+    setConsultando(false)
+    if (datos === null) return
+    setRanking(datos)
+  }
+
+  async function generarPdfRanking() {
+    if (!ranking || ranking.length === 0) {
+      alert('Primero consultá el ranking.')
+      return
+    }
+    const lista = ordenar(ranking)
+    const doc = new jsPDF({ orientation: 'portrait' })
+    const margenIzq = 14
+    let y = 15
+
+    doc.addImage(LOGO_BASE64, 'JPEG', margenIzq, 8, 16, 15)
+    doc.setFont('courier', 'bold')
+    doc.setFontSize(16)
+    doc.text('Productos mas vendidos', margenIzq + 22, y + 3)
+    doc.setFont('courier', 'normal')
+    doc.setFontSize(10)
+    y += 12
+    doc.text(`Periodo: ${formatearFecha(fechaDesde)} al ${formatearFecha(fechaHasta)}`, margenIzq, y)
+    y += 5
+    doc.text(`Ordenado por: ${ordenRanking === 'cant' ? 'cantidad vendida' : 'facturacion'}`, margenIzq, y)
+    y += 6
+
+    const filas = lista.map((x, i) => [
+      String(i + 1),
+      x.nombre + (x.tipo === 'combo' ? ' (combo)' : ''),
+      String(x.cant),
+      formatearMoneda(x.fact),
+    ])
+    const totalCant = lista.reduce((a, x) => a + x.cant, 0)
+    const totalFact = lista.reduce((a, x) => a + x.fact, 0)
+    filas.push(['', 'TOTAL DEL PERIODO', String(totalCant), formatearMoneda(totalFact)])
+
+    autoTable(doc, {
+      startY: y,
+      head: [['#', 'Producto / Combo', 'Cantidad', 'Facturacion']],
+      body: filas,
+      styles: { font: 'courier', fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [232, 118, 92], textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 12 },
+        2: { halign: 'right', cellWidth: 25 },
+        3: { halign: 'right', cellWidth: 38 },
+      },
+      didParseCell: (data) => {
+        if (data.row.index === filas.length - 1 && data.section === 'body') {
+          data.cell.styles.fontStyle = 'bold'
+        }
+      },
+      theme: 'grid',
+      margin: { left: margenIzq, right: margenIzq },
+    })
+
+    const nombreArchivo = `Mas_Vendidos_${fechaDesde}_a_${fechaHasta}.pdf`
+    const esMobile = window.innerWidth <= 768
+    if (esMobile) {
+      window.open(doc.output('bloburl'), '_blank')
+    } else {
+      doc.save(nombreArchivo)
+    }
+  }
+
   async function handleGenerar() {
     if (!fechaDesde || !fechaHasta) {
       alert('Indicá fecha desde y fecha hasta')
@@ -343,6 +468,97 @@ autoTable(doc, {
           💡 El filtro de fechas se aplica sobre la <strong>fecha del pedido</strong>. El informe <strong>Detallado</strong> incluye
           una fila por pedido con sus pagos resumidos. El informe <strong>Totales</strong> agrupa los montos cobrados por medio de
           pago, más el total pendiente de cobro.
+        </p>
+      </div>
+
+      <div className="subseccion">
+        <h3>Productos mas vendidos</h3>
+
+        <div className="formulario formulario-costos">
+          <div className="campo">
+            <label>Ordenar por</label>
+            <select
+              value={ordenRanking}
+              onChange={(e) => setOrdenRanking(e.target.value)}
+              style={{ background: '#fff', colorScheme: 'light' }}
+            >
+              <option value="cant">Cantidad vendida</option>
+              <option value="fact">Facturacion ($)</option>
+            </select>
+          </div>
+          <div className="campo-acciones">
+            <button className="btn-primario" onClick={handleConsultarRanking} disabled={consultando}>
+              {consultando ? 'Consultando...' : '🔎 Consultar'}
+            </button>
+          </div>
+          {ranking && ranking.length > 0 && (
+            <div className="campo-acciones">
+              <button className="btn-secundario" onClick={generarPdfRanking}>📄 Exportar PDF</button>
+            </div>
+          )}
+        </div>
+
+        {ranking && ranking.length === 0 && (
+          <p className="ayuda-vigencia">No se encontraron ventas en el rango de fechas indicado.</p>
+        )}
+
+        {ranking && ranking.length > 0 && (() => {
+          const lista = ordenar(ranking)
+          const max = Math.max(...lista.map((x) => (ordenRanking === 'cant' ? x.cant : x.fact))) || 1
+          const totalCant = lista.reduce((a, x) => a + x.cant, 0)
+          const totalFact = lista.reduce((a, x) => a + x.fact, 0)
+          return (
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th style={{ width: '36px' }}>#</th>
+                  <th>Producto / Combo</th>
+                  <th style={{ textAlign: 'right' }}>Cantidad</th>
+                  <th style={{ textAlign: 'right' }}>Facturacion</th>
+                  <th style={{ width: '120px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lista.map((x, i) => {
+                  const val = ordenRanking === 'cant' ? x.cant : x.fact
+                  const pct = Math.round((val / max) * 100)
+                  return (
+                    <tr key={x.tipo + x.nombre + i}>
+                      <td style={{ color: '#8A6A66' }}>{i + 1}</td>
+                      <td>
+                        {x.nombre}
+                        {x.tipo === 'combo' && (
+                          <span style={{ fontSize: '.68rem', padding: '1px 7px', borderRadius: '20px', background: '#EDE7F6', color: '#7c5cbf', marginLeft: '6px' }}>
+                            combo
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>{x.cant}</td>
+                      <td style={{ textAlign: 'right' }}>{formatearMoneda(x.fact)}</td>
+                      <td>
+                        <div style={{ height: '6px', borderRadius: '3px', background: '#E8765C', opacity: 0.85, width: pct + '%' }} />
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td></td>
+                  <td style={{ fontWeight: 600 }}>Total del periodo</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600 }}>{totalCant}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatearMoneda(totalFact)}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          )
+        })()}
+
+        <p className="ayuda-vigencia">
+          💡 Usa el mismo filtro de fechas de arriba (sobre la <strong>fecha del pedido</strong>). Los combos se muestran como
+          una linea propia. Ordenar por <strong>cantidad</strong> te dice que sale mas; por <strong>facturacion</strong>, que te
+          deja mas plata (no siempre coinciden).
         </p>
       </div>
     </div>
