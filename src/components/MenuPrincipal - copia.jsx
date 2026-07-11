@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 
 // Detecta mobile igual que en Pedidos (768px)
 function useEsMobile() {
@@ -18,29 +17,6 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
   const esMobile = useEsMobile()
   const [menuAbierto, setMenuAbierto] = useState(null)
   const menuRef = useRef(null)
-  const [pendientesWeb, setPendientesWeb] = useState(0)
-
-  // Contador de pedidos web pendientes (se refresca al navegar y cada 60s)
-  useEffect(() => {
-    let vivo = true
-    async function contar() {
-      const { count } = await supabase
-        .from('pedido_web')
-        .select('id_pedido_web', { count: 'exact', head: true })
-        .eq('estado', 'pendiente')
-      if (vivo) setPendientesWeb(count || 0)
-    }
-    contar()
-    const t = setInterval(contar, 60000)
-    return () => { vivo = false; clearInterval(t) }
-  }, [paginaActual])
-
-  const estiloBadge = {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    minWidth: '18px', height: '18px', padding: '0 5px', marginLeft: '6px',
-    borderRadius: '9px', background: '#C0392B', color: '#fff',
-    fontSize: '.7rem', fontWeight: 700, lineHeight: 1,
-  }
 
   const grupos = [
     {
@@ -120,14 +96,7 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
             className={`nav-mobile-item ${paginaActual === item.id ? 'activo' : ''}`}
             onClick={() => onCambiarPagina(item.id)}
           >
-            <span className="nav-mobile-icono" style={{ position: 'relative', display: 'inline-block' }}>
-              {item.icono}
-              {item.id === 'pedidosWeb' && pendientesWeb > 0 && (
-                <span style={{ ...estiloBadge, position: 'absolute', top: '-6px', right: '-10px', marginLeft: 0 }}>
-                  {pendientesWeb}
-                </span>
-              )}
-            </span>
+            <span className="nav-mobile-icono">{item.icono}</span>
             <span className="nav-mobile-label">{item.label}</span>
           </button>
         ))}
@@ -151,11 +120,7 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
             className={grupoActivo(grupo) || menuAbierto === grupo.id ? 'nav-btn active' : 'nav-btn'}
             onClick={() => toggleMenu(grupo.id)}
           >
-            {grupo.label}
-            {grupo.id === 'ventas' && pendientesWeb > 0 && (
-              <span style={estiloBadge}>{pendientesWeb}</span>
-            )}{' '}
-            <span className="nav-flecha">▾</span>
+            {grupo.label} <span className="nav-flecha">▾</span>
           </button>
 
           {menuAbierto === grupo.id && (
@@ -167,9 +132,6 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
                   onClick={() => seleccionarItem(item.id)}
                 >
                   {item.label}
-                  {item.id === 'pedidosWeb' && pendientesWeb > 0 && (
-                    <span style={estiloBadge}>{pendientesWeb}</span>
-                  )}
                 </div>
               ))}
             </div>
