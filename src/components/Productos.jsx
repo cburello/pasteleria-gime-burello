@@ -185,6 +185,7 @@ function DetalleProducto({ producto, onVolver }) {
   const [fechaInicioPrecio, setFechaInicioPrecio] = useState(new Date().toISOString().slice(0, 10))
   const [fechaFinPrecio, setFechaFinPrecio] = useState('3000-12-31')
   const [precioVentaManual, setPrecioVentaManual] = useState('')
+  const [precioMayoristaManual, setPrecioMayoristaManual] = useState('')
   const [guardandoPrecio, setGuardandoPrecio] = useState(false)
   const [editandoPrecioId, setEditandoPrecioId] = useState(null)
 
@@ -426,6 +427,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     setFechaInicioPrecio(new Date().toISOString().slice(0, 10))
     setFechaFinPrecio('3000-12-31')
     setPrecioVentaManual(precioTeoricoSimulado !== null ? precioTeoricoSimulado.toFixed(2) : '')
+    setPrecioMayoristaManual('')
   }
 
   function iniciarEdicionPrecio(p) {
@@ -433,11 +435,22 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     setFechaInicioPrecio(p.fecha_inicio?.slice(0, 10) || '')
     setFechaFinPrecio(p.fecha_fin?.slice(0, 10) || '3000-12-31')
     setPrecioVentaManual(p.precio_venta)
+    setPrecioMayoristaManual(p.precio_mayorista != null ? String(p.precio_mayorista) : '')
   }
 
   async function guardarPrecio() {
     if (!fechaInicioPrecio || !precioVentaManual) {
       alert('Fecha de inicio y precio de venta son obligatorios')
+      return
+    }
+
+    if (precioMayoristaManual === '' || precioMayoristaManual === null) {
+      alert('Falta el precio mayorista. Es obligatorio: si no lo cargás, los clientes mayoristas quedan sin su precio.')
+      return
+    }
+
+    if (isNaN(parseFloat(precioMayoristaManual)) || parseFloat(precioMayoristaManual) < 0) {
+      alert('El precio mayorista no es válido.')
       return
     }
 
@@ -482,6 +495,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       fecha_inicio: fechaInicioPrecio,
       fecha_fin: finEfectivo,
       precio_venta: parseFloat(precioVentaManual),
+      precio_mayorista: parseFloat(precioMayoristaManual),
       precio_teorico: precioTeoricoSimulado !== null ? parseFloat(precioTeoricoSimulado.toFixed(2)) : null,
     }
 
@@ -776,6 +790,17 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
                 onChange={(e) => setPrecioVentaManual(e.target.value)}
               />
             </div>
+            <div className="campo">
+              <label style={{ color: '#5B21B6' }}>Precio mayorista *</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={precioMayoristaManual}
+                onChange={(e) => setPrecioMayoristaManual(e.target.value)}
+                style={{ background: '#fff', colorScheme: 'light', borderColor: '#C4B5FD' }}
+              />
+            </div>
             <div className="campo-acciones">
               <button className="btn-secundario" type="button" onClick={iniciarNuevoPrecio}>
                 Usar precio sugerido
@@ -796,6 +821,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
                     <th>Desde</th>
                     <th>Hasta</th>
                     <th>Precio venta</th>
+                    <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }}>Mayorista</th>
                     <th>Precio teórico (al momento)</th>
                     <th>Acciones</th>
                   </tr>
@@ -811,6 +837,9 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
                       <td>{formatearFecha(p.fecha_inicio)}</td>
                       <td>{p.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(p.fecha_fin)}</td>
                       <td>${formatearMoneda(p.precio_venta)}</td>
+                      <td style={{ color: '#5B21B6', fontWeight: 600 }}>
+                        {p.precio_mayorista != null ? `$${formatearMoneda(p.precio_mayorista)}` : '—'}
+                      </td>
                       <td>{p.precio_teorico ? `$${formatearMoneda(p.precio_teorico)}` : '—'}</td>
                       <td>
                         <button className="btn-link" onClick={() => iniciarEdicionPrecio(p)}>

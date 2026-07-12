@@ -229,6 +229,8 @@ function PreciosMantenimiento() {
       mayorista: f.mayoristaNuevo !== '' && !isNaN(parseFloat(f.mayoristaNuevo))
         ? parseFloat(f.mayoristaNuevo)
         : null,
+      fecha_inicio: f.precioVigente?.fecha_inicio || null,
+      fecha_fin: f.precioVigente?.fecha_fin || null,
     }))
     generarListaPreciosPdf(filasPdf, tipoListaPdf)
   }

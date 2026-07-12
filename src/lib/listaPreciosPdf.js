@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf'
-import { LOGO_BASE64 } from './logoBase64'
 
 // Genera el PDF de lista de precios.
 // filas: [{ descripcion, minorista: number|null, mayorista: number|null }]
@@ -21,30 +20,65 @@ export function generarListaPreciosPdf(filas, tipoLista) {
   const margenIzq = 14
   const anchoTabla = anchoPagina - margenIzq * 2
 
-  // ===== BANDA DE MARCA =====
+  // ===== BANDA DE MARCA (tipográfica, sin recuadros ni círculos) =====
   function dibujarBanda() {
+    // banda terracota
     doc.setFillColor(232, 118, 92)
     doc.rect(0, 0, anchoPagina, 34, 'F')
 
-    // círculo blanco + logo
-    doc.setFillColor(255, 255, 255)
-    doc.circle(margenIzq + 11, 17, 11.5, 'F')
-    try {
-      doc.addImage(LOGO_BASE64, 'JPEG', margenIzq + 1.5, 7.5, 19, 19)
-    } catch { /* seguimos sin logo */ }
+    // filete crema inferior, como remate fino
+    doc.setFillColor(255, 232, 224)
+    doc.rect(0, 34, anchoPagina, 0.8, 'F')
 
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(19)
+    // marca, centrada y aireada
+    doc.setFont('times', 'bolditalic')
+    doc.setFontSize(22)
     doc.setTextColor(255, 255, 255)
-    doc.text('Gime Burello', margenIzq + 27, 16)
+    doc.text('Gime Burello', anchoPagina / 2, 17, { align: 'center' })
 
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(255, 232, 224)
-    doc.text('P A S T E L E R Í A   A R T E S A N A L', margenIzq + 27, 23)
+    doc.setFontSize(7.5)
+    doc.setTextColor(255, 226, 216)
+    doc.text('P A S T E L E R Í A   A R T E S A N A L', anchoPagina / 2, 24.5, { align: 'center' })
+
+    // pequeños trazos a los lados del subtítulo
+    doc.setDrawColor(255, 226, 216)
+    doc.setLineWidth(0.3)
+    doc.line(anchoPagina / 2 - 46, 23.6, anchoPagina / 2 - 34, 23.6)
+    doc.line(anchoPagina / 2 + 34, 23.6, anchoPagina / 2 + 46, 23.6)
+  }
+
+  // ===== VIGENCIA (solo en modo 'ambos') =====
+  const mostrarVigencia = tipoLista === 'ambos'
+  const INDEFINIDA = '3000-12-31'
+
+  // hoy y el limite: un precio con fecha_inicio ANTERIOR a este limite
+  // lleva mas de un mes vigente -> se marca en rojo (candidato a revisar)
+  const hoyDate = new Date(hoy + 'T00:00:00')
+  const limiteMes = new Date(hoyDate)
+  limiteMes.setMonth(limiteMes.getMonth() - 1)
+
+  function fechaCorta(f) {
+    if (!f) return ''
+    const [a, m, d] = f.slice(0, 10).split('-')
+    return `${d}/${m}/${a.slice(2)}`
+  }
+
+  function textoVigencia(f) {
+    if (!f.fecha_inicio) return '—'
+    const desde = fechaCorta(f.fecha_inicio)
+    const fin = (f.fecha_fin || '').slice(0, 10)
+    if (!fin || fin === INDEFINIDA) return desde
+    return `${desde} a ${fechaCorta(fin)}`
+  }
+
+  function vigenciaVencida(f) {
+    if (!f.fecha_inicio) return false
+    return new Date(f.fecha_inicio.slice(0, 10) + 'T00:00:00') < limiteMes
   }
 
   // ===== ENCABEZADO DE TABLA =====
+  const xVigencia = 96
   const xPrecio1 = incluirMin && incluirMay ? 136 : 168
   const xPrecio2 = 168
 
@@ -55,6 +89,9 @@ export function generarListaPreciosPdf(filas, tipoLista) {
     doc.setFontSize(8)
     doc.setTextColor(255, 255, 255)
     doc.text('P R O D U C T O', margenIzq + 4, y + 5.3)
+    if (mostrarVigencia) {
+      doc.text('V I G E N C I A', xVigencia, y + 5.3)
+    }
     if (incluirMin) {
       doc.text('MINORISTA', incluirMay ? xPrecio1 + 14 : xPrecio2 + 14, y + 5.3, { align: 'right' })
     }
@@ -128,13 +165,23 @@ export function generarListaPreciosPdf(filas, tipoLista) {
     // puntos de guía
     const anchoNombre = doc.getTextWidth(f.descripcion)
     const xInicioPuntos = margenIzq + 6 + anchoNombre
-    const xFinPuntos = (incluirMin && incluirMay ? xPrecio1 : xPrecio2) - 16
+    const xFinPuntos = mostrarVigencia ? xVigencia - 4 : (incluirMin && incluirMay ? xPrecio1 : xPrecio2) - 16
     if (xFinPuntos > xInicioPuntos + 4) {
       doc.setDrawColor(216, 196, 190)
       doc.setLineWidth(0.3)
       doc.setLineDashPattern([0.6, 1.4], 0)
       doc.line(xInicioPuntos, y - 0.8, xFinPuntos, y - 0.8)
       doc.setLineDashPattern([], 0)
+    }
+
+    // vigencia (solo en modo 'ambos')
+    if (mostrarVigencia) {
+      const vencida = vigenciaVencida(f)
+      doc.setFont('helvetica', vencida ? 'bold' : 'normal')
+      doc.setFontSize(7.5)
+      if (vencida) doc.setTextColor(200, 35, 35)
+      else doc.setTextColor(138, 106, 102)
+      doc.text(textoVigencia(f), xVigencia, y)
     }
 
     doc.setFont('helvetica', 'bold')
@@ -170,6 +217,11 @@ export function generarListaPreciosPdf(filas, tipoLista) {
   doc.setFontSize(7.5)
   doc.setTextColor(166, 142, 137)
   doc.text('Precios expresados en pesos argentinos, sujetos a modificación sin previo aviso.', margenIzq, Math.min(y, 288))
+  if (mostrarVigencia) {
+    doc.setTextColor(200, 35, 35)
+    doc.text('En rojo: precios con más de un mes de vigencia (conviene revisarlos).', margenIzq, Math.min(y + 4, 292))
+    doc.setTextColor(166, 142, 137)
+  }
   doc.text(`Página ${paginaActual}`, anchoPagina - margenIzq, 288, { align: 'right' })
 
   const nombreArchivo = `Lista_Precios_${tipoLista}_${hoy}.pdf`
@@ -201,6 +253,8 @@ export async function generarListaPreciosDesdeBD(supabase, tipoLista) {
       descripcion: p.descripcion,
       minorista: pr ? parseFloat(pr.precio_venta) : null,
       mayorista: pr?.precio_mayorista ? parseFloat(pr.precio_mayorista) : null,
+      fecha_inicio: pr?.fecha_inicio || null,
+      fecha_fin: pr?.fecha_fin || null,
     }
   })
 
