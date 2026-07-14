@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { obtenerRecetasParaSeleccion, generarPdfRecetas } from '../lib/recetasPdf'
 import { supabase } from '../lib/supabase'
 
 function Recetas() {
@@ -10,6 +11,13 @@ function Recetas() {
   const [recetaActual, setRecetaActual] = useState(null)
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
+
+  const [modalImprimirAbierto, setModalImprimirAbierto] = useState(false)
+  const [listaImprimir, setListaImprimir] = useState([])
+  const [cargandoListaImprimir, setCargandoListaImprimir] = useState(false)
+  const [seleccionImprimir, setSeleccionImprimir] = useState({}) // { id_receta: true/false }
+  const [buscarImprimir, setBuscarImprimir] = useState('')
+  const [generandoPdf, setGenerandoPdf] = useState(false)
 
   useEffect(() => {
     cargarRecetas()
@@ -87,8 +95,66 @@ function Recetas() {
 
   function formatearFecha(fecha) {
     if (!fecha) return ''
-const [anio, mes, dia] = fecha.slice(0, 10).split('-')
-    return `${dia}/${mes}/${anio}`	
+    const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+    return `${dia}/${mes}/${anio}`
+  }
+
+  async function abrirModalImprimir() {
+    setModalImprimirAbierto(true)
+    setCargandoListaImprimir(true)
+    setBuscarImprimir('')
+    try {
+      const lista = await obtenerRecetasParaSeleccion(supabase)
+      setListaImprimir(lista)
+      const inicial = {}
+      lista.forEach((r) => { inicial[r.id_receta] = true })
+      setSeleccionImprimir(inicial)
+    } catch (e) {
+      alert(e.message)
+      setModalImprimirAbierto(false)
+    }
+    setCargandoListaImprimir(false)
+  }
+
+  function cerrarModalImprimir() {
+    if (generandoPdf) return
+    setModalImprimirAbierto(false)
+  }
+
+  const listaImprimirFiltrada = buscarImprimir.trim()
+    ? listaImprimir.filter((r) => normalizar(r.descripcion).includes(normalizar(buscarImprimir)))
+    : listaImprimir
+
+  const cantidadSeleccionada = Object.values(seleccionImprimir).filter(Boolean).length
+  const todasMarcadas = listaImprimirFiltrada.length > 0 && listaImprimirFiltrada.every((r) => seleccionImprimir[r.id_receta])
+
+  function toggleUna(id) {
+    setSeleccionImprimir((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  function toggleTodas() {
+    const nuevoValor = !todasMarcadas
+    setSeleccionImprimir((prev) => {
+      const copia = { ...prev }
+      listaImprimirFiltrada.forEach((r) => { copia[r.id_receta] = nuevoValor })
+      return copia
+    })
+  }
+
+  async function handleGenerarPdf() {
+    const seleccionadas = listaImprimir.filter((r) => seleccionImprimir[r.id_receta])
+    if (seleccionadas.length === 0) {
+      alert('Elegí al menos una receta.')
+      return
+    }
+    setGenerandoPdf(true)
+    try {
+      await generarPdfRecetas(supabase, seleccionadas)
+      setModalImprimirAbierto(false)
+    } catch (e) {
+      alert('No se pudo generar el PDF: ' + e.message)
+    }
+    setGenerandoPdf(false)
   }
 
   if (vista === 'detalle') {
@@ -111,6 +177,9 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       <div className="acciones-superiores">
         <button className="btn-primario" onClick={iniciarNueva}>
           + Nueva Receta
+        </button>
+        <button className="btn-secundario" onClick={abrirModalImprimir}>
+          🖨️ Imprimir recetas
         </button>
       </div>
 
@@ -167,6 +236,91 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
           </table>
         </div>
       )}
+
+      {modalImprimirAbierto && (
+        <div className="modal-overlay" onClick={cerrarModalImprimir}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3>Imprimir recetas</h3>
+            <p className="ayuda-vigencia">Elegí una, varias, o todas. Orden alfabético.</p>
+
+            {cargandoListaImprimir ? (
+              <p>Cargando...</p>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  placeholder="🔎 Buscar receta..."
+                  value={buscarImprimir}
+                  onChange={(e) => setBuscarImprimir(e.target.value)}
+                  style={{ width: '100%', marginBottom: '10px' }}
+                />
+
+                <label
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600,
+                    fontSize: '.9rem', padding: '6px 2px', borderBottom: '2px solid #F0DAD3', marginBottom: '4px',
+                  }}
+                >
+                  <input type="checkbox" checked={todasMarcadas} onChange={toggleTodas} />
+                  Seleccionar todas ({listaImprimirFiltrada.length})
+                </label>
+
+                <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                  {listaImprimirFiltrada.length === 0 && (
+                    <p className="ayuda-vigencia">No hay recetas que coincidan con la búsqueda.</p>
+                  )}
+                  {listaImprimirFiltrada.map((r) => (
+                    <label
+                      key={r.id_receta}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 2px',
+                        borderBottom: '1px solid #FAEDE9', fontSize: '.88rem', cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!seleccionImprimir[r.id_receta]}
+                        onChange={() => toggleUna(r.id_receta)}
+                      />
+                      <span style={{ flex: 1 }}>{r.descripcion}</span>
+                      {r.sinProducto && (
+                        <span
+                          style={{
+                            fontSize: '.66rem', background: '#FBEFD9', color: '#C9A227',
+                            padding: '2px 9px', borderRadius: '20px', fontWeight: 600, whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Sin producto asociado
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #F0DAD3' }}>
+                  <span style={{ fontSize: '.82rem', color: '#8A6A66' }}>
+                    {cantidadSeleccionada} receta{cantidadSeleccionada === 1 ? '' : 's'} seleccionada{cantidadSeleccionada === 1 ? '' : 's'}
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn-secundario" onClick={cerrarModalImprimir} disabled={generandoPdf}>
+                      Cancelar
+                    </button>
+                    <button className="btn-primario" onClick={handleGenerarPdf} disabled={generandoPdf || cantidadSeleccionada === 0}>
+                      {generandoPdf ? 'Generando...' : '📄 Generar PDF'}
+                    </button>
+                  </div>
+                </div>
+
+                <p className="ayuda-vigencia" style={{ marginTop: '10px' }}>
+                  💡 Las recetas marcadas "Sin producto asociado" no están vinculadas a ningún producto de la carta.
+                  Si un ingrediente no tiene costo vigente, en el PDF aparece como "Sin costo cargado" y el total de esa
+                  receta queda marcado como incompleto.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -180,6 +334,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
   const [fechaInicio, setFechaInicio] = useState(receta.fecha_inicio?.slice(0, 10) || '')
   const [fechaFin, setFechaFin] = useState(receta.fecha_fin?.slice(0, 10) || '3000-12-31')
   const [guardando, setGuardando] = useState(false)
+  const [idRecetaActual, setIdRecetaActual] = useState(receta.id_receta)
 
   const [ingredientes, setIngredientes] = useState([])
   const [cargandoIngredientes, setCargandoIngredientes] = useState(true)
@@ -197,7 +352,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
 
   useEffect(() => {
     cargarMateriasPrimas()
-    if (receta.id_receta) {
+    if (idRecetaActual) {
       cargarIngredientes()
     } else {
       setCargandoIngredientes(false)
@@ -247,7 +402,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     const { data, error } = await supabase
       .from('detalle_receta')
       .select('*, materias_primas(descripcion)')
-      .eq('id_receta', receta.id_receta)
+      .eq('id_receta', idRecetaActual)
       .order('secuencia', { ascending: true })
 
     if (!error) {
@@ -330,7 +485,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     }
 
     const mismosDescripcion = recetasExistentes.filter(
-      (r) => normalizar(r.descripcion) === normalizar(descripcion) && r.id_receta !== receta.id_receta
+      (r) => normalizar(r.descripcion) === normalizar(descripcion) && r.id_receta !== idRecetaActual
     )
 
     const conflictivos = mismosDescripcion.filter((r) =>
@@ -368,10 +523,10 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
       fecha_fin: finEfectivo,
     }
 
-    let idResultante = receta.id_receta
+    let idResultante = idRecetaActual
 
-    if (receta.id_receta) {
-      const { error } = await supabase.from('recetas').update(registro).eq('id_receta', receta.id_receta)
+    if (idRecetaActual) {
+      const { error } = await supabase.from('recetas').update(registro).eq('id_receta', idRecetaActual)
       if (error) {
         alert('Error al guardar: ' + error.message)
         setGuardando(false)
@@ -392,12 +547,14 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
   }
 
   async function handleGuardarCabecera() {
+    const esNueva = !idRecetaActual
     const id = await guardarCabecera()
     if (id) {
       alert('Receta guardada correctamente')
-      if (!receta.id_receta) {
-        receta.id_receta = id
-        window.location.reload()
+      if (esNueva) {
+        setIdRecetaActual(id)
+        setCargandoIngredientes(true)
+        cargarIngredientes()
       }
     }
   }
@@ -414,7 +571,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
   }
 
   async function agregarIngrediente() {
-    if (!receta.id_receta) {
+    if (!idRecetaActual) {
       alert('Primero guardá los datos generales de la receta antes de agregar ingredientes')
       return
     }
@@ -436,7 +593,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     const siguienteSecuencia = ingredientes.length > 0 ? Math.max(...ingredientes.map((i) => i.secuencia)) + 1 : 1
 
     const { error } = await supabase.from('detalle_receta').insert({
-      id_receta: receta.id_receta,
+      id_receta: idRecetaActual,
       id_materia_prima: materiaParaAgregar.id_materia_prima,
       secuencia: siguienteSecuencia,
       cantidad: parseFloat(cantidadIngrediente),
@@ -461,7 +618,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     const { error } = await supabase
       .from('detalle_receta')
       .delete()
-      .eq('id_receta', receta.id_receta)
+      .eq('id_receta', idRecetaActual)
       .eq('id_materia_prima', idMateriaPrima)
       .eq('secuencia', secuencia)
 
@@ -478,7 +635,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
         ← Volver a Recetas
       </button>
 
-      <h2>{receta.id_receta ? 'Editar Receta' : 'Nueva Receta'}</h2>
+      <h2>{idRecetaActual ? 'Editar Receta' : 'Nueva Receta'}</h2>
 
       <div className="subseccion">
         <h3>Datos generales</h3>
@@ -523,7 +680,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
         </div>
       </div>
 
-      {receta.id_receta && (
+      {idRecetaActual && (
         <div className="subseccion">
           <h3>Ingredientes</h3>
 
