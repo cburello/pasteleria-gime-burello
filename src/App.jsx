@@ -46,8 +46,8 @@ const [sesion, setSesion] = useState(null)
   const [bloqueado, setBloqueado] = useState(false)
   const [paginaActual, setPaginaActual] = useState('inicio')
   const [idPedidoAbrir, setIdPedidoAbrir] = useState(null)
-//  const TIEMPO_INACTIVIDAD_MS = 4 * 60 * 60 * 1000 // 4 horas
-const TIEMPO_INACTIVIDAD_MS = 10000 //10 segundos
+  const MINUTOS_INACTIVIDAD = Number(import.meta.env.VITE_MINUTOS_INACTIVIDAD) || 240 // default: 4 horas
+  const TIEMPO_INACTIVIDAD_MS = MINUTOS_INACTIVIDAD * 60 * 1000
   const [mostrarCambiarPassword, setMostrarCambiarPassword] = useState(false)
   const [puedeActivarBiometria, setPuedeActivarBiometria] = useState(false)
 
@@ -162,7 +162,7 @@ const TIEMPO_INACTIVIDAD_MS = 10000 //10 segundos
             🔑 Cambiar contraseña
           </button>
           <button className="btn-cerrar-sesion" onClick={cerrarSesion}>
-            ⏻ Cerrar sesión
+            🚪 Cerrar sesión
           </button>
         </div>
       </header>
