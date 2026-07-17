@@ -33,7 +33,8 @@ const [sesion, setSesion] = useState(null)
   const [bloqueado, setBloqueado] = useState(false)
   const [paginaActual, setPaginaActual] = useState('inicio')
   const [idPedidoAbrir, setIdPedidoAbrir] = useState(null)
-  const TIEMPO_INACTIVIDAD_MS = 4 * 60 * 60 * 1000 // 4 horas
+  //const TIEMPO_INACTIVIDAD_MS = 4 * 60 * 60 * 1000 // 4 horas
+  const TIEMPO_INACTIVIDAD_MS = 10000  //10 segundos
   const [mostrarCambiarPassword, setMostrarCambiarPassword] = useState(false)
   const [puedeActivarBiometria, setPuedeActivarBiometria] = useState(false)
 
