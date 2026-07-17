@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { obtenerRecetasParaSeleccion, generarPdfRecetas } from '../lib/recetasPdf'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function Recetas() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [recetas, setRecetas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -64,8 +66,8 @@ function Recetas() {
   }
 
   async function eliminarReceta(id) {
-    const confirmar = window.confirm('¿Seguro que querés eliminar esta receta? También se eliminarán sus ingredientes.')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar esta receta? También se eliminarán sus ingredientes.')
+    if (!confirmado) return
 
     const { error: errorDetalle } = await supabase
       .from('detalle_receta')
@@ -73,7 +75,7 @@ function Recetas() {
       .eq('id_receta', id)
 
     if (errorDetalle) {
-      alert('Error al eliminar ingredientes de la receta: ' + errorDetalle.message)
+      mostrarToast('Error al eliminar ingredientes de la receta: ' + errorDetalle.message, 'error')
       return
     }
 
@@ -83,7 +85,7 @@ function Recetas() {
       .eq('id_receta', id)
 
     if (error) {
-      alert('No se pudo eliminar la receta. Puede estar usada en algún producto.\n\nDetalle: ' + error.message)
+      mostrarToast('No se pudo eliminar la receta. Puede estar usada en algún producto. Detalle: ' + error.message, 'error')
     } else {
       cargarRecetas()
     }
@@ -110,7 +112,7 @@ function Recetas() {
       lista.forEach((r) => { inicial[r.id_receta] = true })
       setSeleccionImprimir(inicial)
     } catch (e) {
-      alert(e.message)
+      mostrarToast(e.message, 'error')
       setModalImprimirAbierto(false)
     }
     setCargandoListaImprimir(false)
@@ -144,7 +146,7 @@ function Recetas() {
   async function handleGenerarPdf() {
     const seleccionadas = listaImprimir.filter((r) => seleccionImprimir[r.id_receta])
     if (seleccionadas.length === 0) {
-      alert('Elegí al menos una receta.')
+      mostrarToast('Elegí al menos una receta.', 'error')
       return
     }
     setGenerandoPdf(true)
@@ -152,7 +154,7 @@ function Recetas() {
       await generarPdfRecetas(supabase, seleccionadas)
       setModalImprimirAbierto(false)
     } catch (e) {
-      alert('No se pudo generar el PDF: ' + e.message)
+      mostrarToast('No se pudo generar el PDF: ' + e.message, 'error')
     }
     setGenerandoPdf(false)
   }
@@ -329,6 +331,7 @@ function Recetas() {
 // SUBCOMPONENTE: Detalle de receta (cabecera + ingredientes)
 // ============================================================
 function DetalleReceta({ receta, recetasExistentes, onVolver }) {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [descripcion, setDescripcion] = useState(receta.descripcion)
   const [cantidadFinal, setCantidadFinal] = useState(receta.cantidad_producto_final)
   const [fechaInicio, setFechaInicio] = useState(receta.fecha_inicio?.slice(0, 10) || '')
@@ -473,14 +476,14 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
 
   async function guardarCabecera() {
     if (!descripcion.trim() || !cantidadFinal || !fechaInicio) {
-      alert('Descripción, cantidad de producto final y fecha de inicio son obligatorios')
+      mostrarToast('Descripción, cantidad de producto final y fecha de inicio son obligatorios', 'error')
       return null
     }
 
     const finEfectivo = fechaFin || '3000-12-31'
 
     if (new Date(fechaInicio) > new Date(finEfectivo)) {
-      alert('La fecha de inicio no puede ser posterior a la fecha de fin')
+      mostrarToast('La fecha de inicio no puede ser posterior a la fecha de fin', 'error')
       return null
     }
 
@@ -503,7 +506,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     }
 
     if (noAjustables.length > 0) {
-      alert('Hay un conflicto de vigencia con otra versión de esta receta que no se puede resolver automáticamente. Revisá las fechas.')
+      mostrarToast('Hay un conflicto de vigencia con otra versión de esta receta que no se puede resolver automáticamente. Revisá las fechas.', 'error')
       return null
     }
 
@@ -528,14 +531,14 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     if (idRecetaActual) {
       const { error } = await supabase.from('recetas').update(registro).eq('id_receta', idRecetaActual)
       if (error) {
-        alert('Error al guardar: ' + error.message)
+        mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardando(false)
         return null
       }
     } else {
       const { data, error } = await supabase.from('recetas').insert(registro).select().single()
       if (error) {
-        alert('Error al guardar: ' + error.message)
+        mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardando(false)
         return null
       }
@@ -550,7 +553,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     const esNueva = !idRecetaActual
     const id = await guardarCabecera()
     if (id) {
-      alert('Receta guardada correctamente')
+      mostrarToast('Receta guardada correctamente')
       if (esNueva) {
         setIdRecetaActual(id)
         setCargandoIngredientes(true)
@@ -572,21 +575,21 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
 
   async function agregarIngrediente() {
     if (!idRecetaActual) {
-      alert('Primero guardá los datos generales de la receta antes de agregar ingredientes')
+      mostrarToast('Primero guardá los datos generales de la receta antes de agregar ingredientes', 'error')
       return
     }
     if (!materiaParaAgregar || !cantidadIngrediente) {
-      alert('Seleccioná una materia prima e indicá la cantidad')
+      mostrarToast('Seleccioná una materia prima e indicá la cantidad', 'error')
       return
     }
     if (!costoVigenteMateria) {
-      alert('Esta materia prima no tiene un costo vigente cargado. Cargá su costo antes de usarla en una receta.')
+      mostrarToast('Esta materia prima no tiene un costo vigente cargado. Cargá su costo antes de usarla en una receta.', 'error')
       return
     }
 
     const yaExiste = ingredientes.find((i) => i.id_materia_prima === materiaParaAgregar.id_materia_prima)
     if (yaExiste) {
-      alert('Esa materia prima ya está agregada a la receta. Editá la cantidad si es necesario.')
+      mostrarToast('Esa materia prima ya está agregada a la receta. Editá la cantidad si es necesario.', 'error')
       return
     }
 
@@ -601,7 +604,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     })
 
     if (error) {
-      alert('Error al agregar ingrediente: ' + error.message)
+      mostrarToast('Error al agregar ingrediente: ' + error.message, 'error')
     } else {
       setMateriaParaAgregar(null)
       setTextoBuscarMateria('')
@@ -612,8 +615,8 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
   }
 
   async function quitarIngrediente(idMateriaPrima, secuencia) {
-    const confirmar = window.confirm('¿Quitar este ingrediente de la receta?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Quitar este ingrediente de la receta?')
+    if (!confirmado) return
 
     const { error } = await supabase
       .from('detalle_receta')
@@ -623,7 +626,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
       .eq('secuencia', secuencia)
 
     if (error) {
-      alert('Error al quitar ingrediente: ' + error.message)
+      mostrarToast('Error al quitar ingrediente: ' + error.message, 'error')
     } else {
       cargarIngredientes()
     }

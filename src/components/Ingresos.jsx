@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function useEsMobile() {
   const [esMobile, setEsMobile] = useState(
@@ -45,6 +46,7 @@ async function periodoCerrado(fechaStr) {
 }
 
 function Ingresos() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const esMobile = useEsMobile()
 
   const [ingresos, setIngresos] = useState([])
@@ -177,11 +179,11 @@ function Ingresos() {
 
   async function iniciarEdicion(ingreso) {
     if (ingreso.id_pedido) {
-      alert('Este ingreso fue generado automáticamente desde un pago de Pedidos y no se puede editar aquí.')
+      mostrarToast('Este ingreso fue generado automáticamente desde un pago de Pedidos y no se puede editar aquí.', 'error')
       return
     }
     if (await periodoCerrado(ingreso.fecha)) {
-      alert('🔒 Este ingreso pertenece a un período cerrado y no se puede modificar.')
+      mostrarToast('🔒 Este ingreso pertenece a un período cerrado y no se puede modificar.', 'error')
       return
     }
     setEditandoId(ingreso.id_ingreso)
@@ -219,8 +221,9 @@ function Ingresos() {
         'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
       ]
-      alert(
-        `El período correspondiente a la fecha ingresada ya está cerrado. La fecha se ajustó automáticamente a ${nombresMes[f.getMonth()]} ${f.getFullYear()}.`
+      mostrarToast(
+        `El período correspondiente a la fecha ingresada ya está cerrado. La fecha se ajustó automáticamente a ${nombresMes[f.getMonth()]} ${f.getFullYear()}.`,
+        'error'
       )
     }
 
@@ -231,14 +234,14 @@ function Ingresos() {
     e.preventDefault()
 
     if (!idConcepto || !fecha || !importe || !idMedioPago) {
-      alert('Concepto, fecha, importe y medio de pago son obligatorios')
+      mostrarToast('Concepto, fecha, importe y medio de pago son obligatorios', 'error')
       return
     }
 
     if (editandoId) {
       const original = ingresos.find(i => i.id_ingreso === editandoId)
       if (original && await periodoCerrado(original.fecha)) {
-        alert('🔒 Este ingreso pertenece a un período cerrado y no se puede modificar.')
+        mostrarToast('🔒 Este ingreso pertenece a un período cerrado y no se puede modificar.', 'error')
         return
       }
     }
@@ -264,7 +267,7 @@ function Ingresos() {
     }
 
     if (resultado.error) {
-      alert('Error al guardar: ' + resultado.error.message)
+      mostrarToast('Error al guardar: ' + resultado.error.message, 'error')
     } else {
       limpiarFormulario()
       cargarIngresos()
@@ -276,20 +279,20 @@ function Ingresos() {
 
   async function eliminar(ingreso) {
     if (ingreso.id_pedido) {
-      alert('Este ingreso fue generado automáticamente desde un pago de Pedidos y no se puede eliminar aquí.')
+      mostrarToast('Este ingreso fue generado automáticamente desde un pago de Pedidos y no se puede eliminar aquí.', 'error')
       return
     }
     if (await periodoCerrado(ingreso.fecha)) {
-      alert('🔒 Este ingreso pertenece a un período cerrado y no se puede eliminar.')
+      mostrarToast('🔒 Este ingreso pertenece a un período cerrado y no se puede eliminar.', 'error')
       return
     }
-    const confirmar = window.confirm('¿Seguro que querés eliminar este ingreso?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este ingreso?')
+    if (!confirmado) return
 
     const { error } = await supabase.from('ingresos').delete().eq('id_ingreso', ingreso.id_ingreso)
 
     if (error) {
-      alert('No se pudo eliminar: ' + error.message)
+      mostrarToast('No se pudo eliminar: ' + error.message, 'error')
     } else {
       cargarIngresos()
     }

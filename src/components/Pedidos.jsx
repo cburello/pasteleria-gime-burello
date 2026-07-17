@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { LOGO_BASE64 } from '../lib/logoBase64'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 // Detecta si la pantalla es de tamaño mobile (mismo breakpoint que App.css: 768px).
 // Se recalcula automáticamente si la ventana cambia de tamaño u orientación.
@@ -23,6 +24,7 @@ function useEsMobile() {
 }
 
 function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const esMobile = useEsMobile()
   const [pedidos, setPedidos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -155,13 +157,13 @@ function formatearFecha(fecha) {
         .limit(1)
 
       if (resultadoExistente && resultadoExistente.length > 0) {
-        alert('No se puede eliminar este pedido: el período correspondiente a su fecha de pedido ya fue cerrado en Resultados.')
+        mostrarToast('No se puede eliminar este pedido: el período correspondiente a su fecha de pedido ya fue cerrado en Resultados.', 'error')
         return
       }
     }
 
-    const confirmar = window.confirm('¿Seguro que querés eliminar este pedido? También se eliminarán sus líneas y pagos.')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este pedido? También se eliminarán sus líneas y pagos.')
+    if (!confirmado) return
 
     await supabase.from('pagos').delete().eq('id_pedido', id)
     await supabase.from('detalle_pedido').delete().eq('id_pedido', id)
@@ -169,7 +171,7 @@ function formatearFecha(fecha) {
     const { error } = await supabase.from('pedidos').delete().eq('id_pedido', id)
 
     if (error) {
-      alert('No se pudo eliminar el pedido.\n\nDetalle: ' + error.message)
+      mostrarToast('No se pudo eliminar el pedido. Detalle: ' + error.message, 'error')
     } else {
       cargarPedidos()
     }
@@ -233,19 +235,19 @@ function formatearFecha(fecha) {
     const importe = parseFloat(importePagoRapido)
 
     if (!importePagoRapido || isNaN(importe) || importe <= 0) {
-      alert('Ingresá un importe válido')
+      mostrarToast('Ingresá un importe válido', 'error')
       return
     }
     if (!medioPagoRapido) {
-      alert('Elegí un medio de pago')
+      mostrarToast('Elegí un medio de pago', 'error')
       return
     }
     if (tipoPagoRapido === 'SE' && importe >= total) {
-      alert('La seña debe ser menor al total del pedido.')
+      mostrarToast('La seña debe ser menor al total del pedido.', 'error')
       return
     }
     if (importe > saldo + 0.001) {
-      alert(`El importe no puede superar el saldo pendiente ($${formatearMoneda(saldo)}).`)
+      mostrarToast(`El importe no puede superar el saldo pendiente ($${formatearMoneda(saldo)}).`, 'error')
       return
     }
 
@@ -254,7 +256,7 @@ function formatearFecha(fecha) {
     const fechaHoy = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 10)
     const cerrado = await periodoCerradoLista(fechaHoy, medioPagoRapido)
     if (cerrado) {
-      alert('No se puede registrar este pago porque el período correspondiente ya fue cerrado en Resultados.')
+      mostrarToast('No se puede registrar este pago porque el período correspondiente ya fue cerrado en Resultados.', 'error')
       setGuardandoPagoRapido(false)
       return
     }
@@ -280,9 +282,9 @@ function formatearFecha(fecha) {
     })
 
     if (error) {
-      alert('Error al registrar el pago: ' + error.message)
+      mostrarToast('Error al registrar el pago: ' + error.message, 'error')
     } else {
-      alert('✅ Pago registrado correctamente')
+      mostrarToast('Pago registrado correctamente')
       setPedidoCobro(null)
       await cargarPedidos()
     }
@@ -572,6 +574,7 @@ function formatearFecha(fecha) {
 }
 
 function DetallePedido({ pedido, esMobile, onVolver }) {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [clientes, setClientes] = useState([])
   const [textoBuscarCliente, setTextoBuscarCliente] = useState('')
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
@@ -723,7 +726,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       .single()
 
     if (error) {
-      alert('Error al crear el cliente anónimo genérico: ' + error.message)
+      mostrarToast('Error al crear el cliente anónimo genérico: ' + error.message, 'error')
       return null
     }
 
@@ -732,7 +735,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
 
   async function guardarCabecera() {
     if (!fechaEntrega) {
-      alert('La fecha de entrega es obligatoria')
+      mostrarToast('La fecha de entrega es obligatoria', 'error')
       return null
     }
 
@@ -744,7 +747,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       .limit(1)
 
     if (resultadoExistente && resultadoExistente.length > 0) {
-      alert('No se puede guardar este pedido: el período correspondiente a su fecha de pedido ya fue cerrado en Resultados.')
+      mostrarToast('No se puede guardar este pedido: el período correspondiente a su fecha de pedido ya fue cerrado en Resultados.', 'error')
       return null
     }
 
@@ -752,7 +755,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     const esAnonimo = clienteEsAnonimo(clienteSeleccionado)
 
     if ((sinClienteSeleccionado || esAnonimo) && !descripcion.trim()) {
-      alert('La descripción (nombre) es obligatoria cuando no hay un cliente identificado seleccionado')
+      mostrarToast('La descripción (nombre) es obligatoria cuando no hay un cliente identificado seleccionado', 'error')
       return null
     }
 
@@ -782,14 +785,14 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     if (pedido.id_pedido) {
       const { error } = await supabase.from('pedidos').update(registro).eq('id_pedido', pedido.id_pedido)
       if (error) {
-        alert('Error al guardar: ' + error.message)
+        mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardandoCabecera(false)
         return null
       }
     } else {
       const { data, error } = await supabase.from('pedidos').insert(registro).select().single()
       if (error) {
-        alert('Error al guardar: ' + error.message)
+        mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardandoCabecera(false)
         return null
       }
@@ -815,7 +818,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
         }
         setPasoMobile(2)
       } else {
-        alert(esNuevo ? 'Pedido guardado. Ya podés agregar productos/combos y registrar pagos.' : 'Pedido actualizado correctamente')
+        mostrarToast(esNuevo ? 'Pedido guardado. Ya podés agregar productos/combos y registrar pagos.' : 'Pedido actualizado correctamente')
         if (esNuevo) {
           await cargarLineas()
           await cargarPagos()
@@ -926,17 +929,17 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
 
 async function agregarLinea() {
     if (!pedido.id_pedido) {
-      alert('Primero guardá los datos generales del pedido antes de agregar productos o combos')
+      mostrarToast('Primero guardá los datos generales del pedido antes de agregar productos o combos', 'error')
       return
     }
     for (const pago of pagos) {
       if (await periodoEstaCerrado(pago.fecha_pago, pago.medio_pago)) {
-        alert('🔒 Este pedido tiene pagos en períodos cerrados. No se puede modificar su detalle.')
+        mostrarToast('🔒 Este pedido tiene pagos en períodos cerrados. No se puede modificar su detalle.', 'error')
         return
       }
     }
     if (!itemSeleccionado || !cantidadItem || !precioVentaItem) {
-      alert('Seleccioná un producto/combo, indicá la cantidad y verificá el precio')
+      mostrarToast('Seleccioná un producto/combo, indicá la cantidad y verificá el precio', 'error')
       return
     }
 
@@ -955,7 +958,7 @@ async function agregarLinea() {
     const { error } = await supabase.from('detalle_pedido').insert(registro)
 
     if (error) {
-      alert('Error al agregar la línea: ' + error.message)
+      mostrarToast('Error al agregar la línea: ' + error.message, 'error')
     } else {
       setItemSeleccionado(null)
       setTextoBuscarItem('')
@@ -969,12 +972,12 @@ async function agregarLinea() {
 async function quitarLinea(secuencia) {
     for (const pago of pagos) {
       if (await periodoEstaCerrado(pago.fecha_pago, pago.medio_pago)) {
-        alert('🔒 Este pedido tiene pagos en períodos cerrados. No se puede modificar su detalle.')
+        mostrarToast('🔒 Este pedido tiene pagos en períodos cerrados. No se puede modificar su detalle.', 'error')
         return
       }
     }
-    const confirmar = window.confirm('¿Quitar esta línea del pedido?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Quitar esta línea del pedido?')
+    if (!confirmado) return
 
     const { error } = await supabase
       .from('detalle_pedido')
@@ -983,7 +986,7 @@ async function quitarLinea(secuencia) {
       .eq('secuencia', secuencia)
 
     if (error) {
-      alert('Error al quitar la línea: ' + error.message)
+      mostrarToast('Error al quitar la línea: ' + error.message, 'error')
     } else {
       cargarLineas()
     }
@@ -1040,41 +1043,41 @@ async function quitarLinea(secuencia) {
 
   async function agregarPago() {
     if (!pedido.id_pedido) {
-      alert('Primero guardá los datos generales del pedido')
+      mostrarToast('Primero guardá los datos generales del pedido', 'error')
       return
     }
 
     const fechaHoy = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 10)
     const cerrado = await periodoEstaCerrado(fechaHoy, medioPago)
     if (cerrado) {
-      alert('No se puede registrar este pago porque el período correspondiente ya fue cerrado en Resultados.')
+      mostrarToast('No se puede registrar este pago porque el período correspondiente ya fue cerrado en Resultados.', 'error')
       return
     }
 
     if (saldoPendiente <= 0) {
-      alert('Este pedido ya está totalmente pagado. No se pueden registrar más pagos.')
+      mostrarToast('Este pedido ya está totalmente pagado. No se pueden registrar más pagos.', 'error')
       return
     }
 
     const importe = parseFloat(importePago)
 
     if (!importePago || importe <= 0) {
-      alert('Ingresá un importe válido')
+      mostrarToast('Ingresá un importe válido', 'error')
       return
     }
 
     if (tipoPago === 'SE' && importe >= totalPedido) {
-      alert('La seña debe ser menor al total del pedido.')
+      mostrarToast('La seña debe ser menor al total del pedido.', 'error')
       return
     }
 
     if ((tipoPago === 'PP' || tipoPago === 'PT') && importe > saldoPendiente) {
-      alert(`El importe no puede superar el saldo pendiente ($${formatearMoneda(saldoPendiente)}).`)
+      mostrarToast(`El importe no puede superar el saldo pendiente ($${formatearMoneda(saldoPendiente)}).`, 'error')
       return
     }
 
     if (totalPagado + importe > totalPedido) {
-      alert('La suma de los pagos no puede superar el total del pedido.')
+      mostrarToast('La suma de los pagos no puede superar el total del pedido.', 'error')
       return
     }
 
@@ -1100,7 +1103,7 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
     })
 
     if (error) {
-      alert('Error al registrar el pago: ' + error.message)
+      mostrarToast('Error al registrar el pago: ' + error.message, 'error')
     } else {
       setImportePago('')
       cargarPagos()
@@ -1112,13 +1115,13 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
     if (pago) {
       const cerrado = await periodoEstaCerrado(pago.fecha_pago, pago.medio_pago)
       if (cerrado) {
-        alert('No se puede eliminar este pago porque su período ya fue cerrado en Resultados.')
+        mostrarToast('No se puede eliminar este pago porque su período ya fue cerrado en Resultados.', 'error')
         return
       }
     }
 
-    const confirmar = window.confirm('¿Eliminar este pago?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Eliminar este pago?')
+    if (!confirmado) return
 
     const { error } = await supabase
       .from('pagos')
@@ -1127,7 +1130,7 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
       .eq('secuencia', secuencia)
 
     if (error) {
-      alert('Error al eliminar el pago: ' + error.message)
+      mostrarToast('Error al eliminar el pago: ' + error.message, 'error')
     } else {
       cargarPagos()
     }
@@ -1143,7 +1146,7 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
 
   function generarComanda() {
     if (lineas.length === 0) {
-      alert('Este pedido no tiene productos o combos cargados todavía.')
+      mostrarToast('Este pedido no tiene productos o combos cargados todavía.', 'error')
       return
     }
 

@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import logo from './assets/logo.jpeg'
 import './App.css'
 import { supabase } from './lib/supabase'
+import { useNotificaciones } from './hooks/useNotificaciones'
+import { soportaBiometria, hayCredencialRegistrada, registrarCredencial } from './lib/biometria'
 import Login from './components/Login'
+import PantallaBloqueo from './components/PantallaBloqueo'
 import Dashboard from './components/Dashboard'
 import MateriasPrimas from './components/MateriasPrimas'
 import Recetas from './components/Recetas'
@@ -24,12 +27,15 @@ import PedidosWeb from './components/PedidosWeb'
 import CaratulaWeb from './components/CaratulaWeb'
 
 function App() {
+  const { mostrarToast } = useNotificaciones()
 const [sesion, setSesion] = useState(null)
   const [verificandoSesion, setVerificandoSesion] = useState(true)
+  const [bloqueado, setBloqueado] = useState(false)
   const [paginaActual, setPaginaActual] = useState('inicio')
   const [idPedidoAbrir, setIdPedidoAbrir] = useState(null)
   const TIEMPO_INACTIVIDAD_MS = 4 * 60 * 60 * 1000 // 4 horas
   const [mostrarCambiarPassword, setMostrarCambiarPassword] = useState(false)
+  const [puedeActivarBiometria, setPuedeActivarBiometria] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -45,17 +51,16 @@ const [sesion, setSesion] = useState(null)
       listener.subscription.unsubscribe()
     }
   }, [])
-  // Cierre de sesión automático por inactividad
+  // Bloqueo automático por inactividad (no cierra la sesión: solo tapa la pantalla)
   useEffect(() => {
-    if (!sesion) return
+    if (!sesion || bloqueado) return
 
     let temporizador
 
     function reiniciarTemporizador() {
       clearTimeout(temporizador)
       temporizador = setTimeout(() => {
-        supabase.auth.signOut()
-        setSesion(null)
+        setBloqueado(true)
       }, TIEMPO_INACTIVIDAD_MS)
     }
 
@@ -68,11 +73,32 @@ const [sesion, setSesion] = useState(null)
       clearTimeout(temporizador)
       eventos.forEach((ev) => window.removeEventListener(ev, reiniciarTemporizador))
     }
+  }, [sesion, bloqueado])
+
+  // Verifica si este dispositivo puede ofrecer activar el desbloqueo biométrico
+  useEffect(() => {
+    if (!sesion) return
+    let cancelado = false
+    soportaBiometria().then((soporta) => {
+      if (!cancelado) setPuedeActivarBiometria(soporta && !hayCredencialRegistrada())
+    })
+    return () => { cancelado = true }
   }, [sesion])
 
   async function cerrarSesion() {
     await supabase.auth.signOut()
     setSesion(null)
+    setBloqueado(false)
+  }
+
+  async function activarBiometria() {
+    try {
+      await registrarCredencial(sesion.user.email)
+      setPuedeActivarBiometria(false)
+      mostrarToast('Desbloqueo con huella / Face ID activado en este dispositivo.')
+    } catch (e) {
+      mostrarToast('No se pudo activar: ' + e.message, 'error')
+    }
   }
 
   function irAPedido(idPedido) {
@@ -92,6 +118,15 @@ const [sesion, setSesion] = useState(null)
     return <Login onLoginExitoso={(s) => setSesion(s)} />
   }
 
+  if (bloqueado) {
+    return (
+      <PantallaBloqueo
+        onDesbloquear={() => setBloqueado(false)}
+        onCerrarSesion={cerrarSesion}
+      />
+    )
+  }
+
   return (
     <div className="app-container">
 <header className="app-header">
@@ -100,6 +135,11 @@ const [sesion, setSesion] = useState(null)
           <h1>Gime Burello Pasteleria<span>Pastelería</span></h1>
         </div>
         <div className="header-acciones">
+          {puedeActivarBiometria && (
+            <button className="btn-cambiar-password" onClick={activarBiometria}>
+              🔓 Activar huella / Face ID
+            </button>
+          )}
           <button className="btn-cambiar-password" onClick={() => setMostrarCambiarPassword(true)}>
             🔑 Cambiar contraseña
           </button>

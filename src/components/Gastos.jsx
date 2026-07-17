@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function useEsMobile() {
   const [esMobile, setEsMobile] = useState(
@@ -33,6 +34,7 @@ async function periodoCerrado(fechaStr) {
 }
 
 function Gastos() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const esMobile = useEsMobile()
 
   const [gastos, setGastos] = useState([])
@@ -128,7 +130,7 @@ function Gastos() {
 
   async function iniciarEdicion(gasto) {
     if (await periodoCerrado(gasto.fecha)) {
-      alert('🔒 Este gasto pertenece a un período cerrado y no se puede modificar.')
+      mostrarToast('🔒 Este gasto pertenece a un período cerrado y no se puede modificar.', 'error')
       return
     }
     setEditandoId(gasto.id_gasto)
@@ -157,7 +159,7 @@ function Gastos() {
     if (ajustada) {
       const f = new Date(fechaActual + 'T00:00:00')
       const nombresMes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-      alert(`El período correspondiente a la fecha ingresada ya está cerrado. La fecha se ajustó automáticamente a ${nombresMes[f.getMonth()]} ${f.getFullYear()}.`)
+      mostrarToast(`El período correspondiente a la fecha ingresada ya está cerrado. La fecha se ajustó automáticamente a ${nombresMes[f.getMonth()]} ${f.getFullYear()}.`, 'error')
     }
     return fechaActual
   }
@@ -165,14 +167,14 @@ function Gastos() {
   async function guardar(e) {
     e.preventDefault()
     if (!idConcepto || !fecha || !importe || !idMedioPago) {
-      alert('Concepto, fecha, importe y medio de pago son obligatorios')
+      mostrarToast('Concepto, fecha, importe y medio de pago son obligatorios', 'error')
       return
     }
     // Si es edición, verificar que el período original no esté cerrado
     if (editandoId) {
       const gastoOriginal = gastos.find(g => g.id_gasto === editandoId)
       if (gastoOriginal && await periodoCerrado(gastoOriginal.fecha)) {
-        alert('🔒 Este gasto pertenece a un período cerrado y no se puede modificar.')
+        mostrarToast('🔒 Este gasto pertenece a un período cerrado y no se puede modificar.', 'error')
         return
       }
     }
@@ -195,7 +197,7 @@ function Gastos() {
       resultado = await supabase.from('gastos').insert(registro)
     }
     if (resultado.error) {
-      alert('Error al guardar: ' + resultado.error.message)
+      mostrarToast('Error al guardar: ' + resultado.error.message, 'error')
     } else {
       limpiarFormulario()
       cargarGastos()
@@ -206,14 +208,14 @@ function Gastos() {
 
   async function eliminar(gasto) {
     if (await periodoCerrado(gasto.fecha)) {
-      alert('🔒 Este gasto pertenece a un período cerrado y no se puede eliminar.')
+      mostrarToast('🔒 Este gasto pertenece a un período cerrado y no se puede eliminar.', 'error')
       return
     }
-    const confirmar = window.confirm('¿Seguro que querés eliminar este gasto?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este gasto?')
+    if (!confirmado) return
     const { error } = await supabase.from('gastos').delete().eq('id_gasto', gasto.id_gasto)
     if (error) {
-      alert('No se pudo eliminar: ' + error.message)
+      mostrarToast('No se pudo eliminar: ' + error.message, 'error')
     } else {
       cargarGastos()
     }

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function Clientes() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [clientes, setClientes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -71,7 +73,7 @@ function Clientes() {
 
   async function buscarSimilares() {
     if (!descripcion.trim()) {
-      alert('Escribí una descripción para buscar')
+      mostrarToast('Escribí una descripción para buscar', 'error')
       return
     }
 
@@ -80,7 +82,7 @@ function Clientes() {
     const { data, error } = await supabase.from('clientes').select('*').eq('cliente_anonimo', 'N')
 
     if (error) {
-      alert('Error al buscar: ' + error.message)
+      mostrarToast('Error al buscar: ' + error.message, 'error')
       return
     }
 
@@ -100,7 +102,7 @@ function Clientes() {
       // Cliente anónimo: no requiere datos adicionales
     } else {
       if (!descripcion.trim() || !domicilio.trim() || !telefono.trim()) {
-        alert('Para un cliente identificado, descripción, domicilio y teléfono son obligatorios')
+        mostrarToast('Para un cliente identificado, descripción, domicilio y teléfono son obligatorios', 'error')
         return
       }
     }
@@ -118,11 +120,11 @@ function Clientes() {
         .update(registroSinAnonimo)
         .eq('id_cliente', editandoId)
 
-      if (error) alert('Error al actualizar: ' + error.message)
+      if (error) mostrarToast('Error al actualizar: ' + error.message, 'error')
     } else {
       const { error } = await supabase.from('clientes').insert(registro)
 
-      if (error) alert('Error al crear: ' + error.message)
+      if (error) mostrarToast('Error al crear: ' + error.message, 'error')
     }
 
     setGuardando(false)
@@ -131,13 +133,13 @@ function Clientes() {
   }
 
   async function eliminar(id) {
-    const confirmar = window.confirm('¿Seguro que querés eliminar este cliente?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este cliente?')
+    if (!confirmado) return
 
     const { error } = await supabase.from('clientes').delete().eq('id_cliente', id)
 
     if (error) {
-      alert('No se pudo eliminar. Puede que esté siendo usado en algún pedido.\n\nDetalle: ' + error.message)
+      mostrarToast('No se pudo eliminar. Puede que esté siendo usado en algún pedido. Detalle: ' + error.message, 'error')
     } else {
       cargarClientes()
     }

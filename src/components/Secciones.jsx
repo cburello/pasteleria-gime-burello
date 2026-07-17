@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function slugify(texto) {
   return (texto || '')
@@ -13,6 +14,7 @@ function slugify(texto) {
 }
 
 function Secciones() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [rubros, setRubros] = useState([])
   const [caratula, setCaratula] = useState(null)
   const [cargando, setCargando] = useState(true)
@@ -74,7 +76,7 @@ function Secciones() {
       .from('catalogo')
       .upload(ruta, file, { upsert: true, contentType: file.type })
     if (error) {
-      alert('Error al subir la imagen: ' + error.message)
+      mostrarToast('Error al subir la imagen: ' + error.message, 'error')
       setSubiendoCaratula(false)
       return
     }
@@ -86,7 +88,7 @@ function Secciones() {
   async function guardarCaratula() {
     if (!caratula) return
     if (!caratulaNombre.trim()) {
-      alert('El nombre de la carátula es obligatorio')
+      mostrarToast('El nombre de la carátula es obligatorio', 'error')
       return
     }
     setGuardandoCaratula(true)
@@ -101,9 +103,9 @@ function Secciones() {
       .eq('id_seccion', caratula.id_seccion)
 
     if (error) {
-      alert('Error al guardar la carátula: ' + error.message)
+      mostrarToast('Error al guardar la carátula: ' + error.message, 'error')
     } else {
-      alert('Carátula guardada correctamente')
+      mostrarToast('Carátula guardada correctamente')
       cargarSecciones()
     }
     setGuardandoCaratula(false)
@@ -132,7 +134,7 @@ function Secciones() {
   async function subirImagenRubro(file) {
     if (!file) return
     if (!editandoId) {
-      alert('Guardá primero el rubro para poder subir la imagen.')
+      mostrarToast('Guardá primero el rubro para poder subir la imagen.', 'error')
       return
     }
     setSubiendoImagen(true)
@@ -142,7 +144,7 @@ function Secciones() {
       .from('catalogo')
       .upload(ruta, file, { upsert: true, contentType: file.type })
     if (error) {
-      alert('Error al subir la imagen: ' + error.message)
+      mostrarToast('Error al subir la imagen: ' + error.message, 'error')
       setSubiendoImagen(false)
       return
     }
@@ -154,7 +156,7 @@ function Secciones() {
   async function guardarRubro(e) {
     e.preventDefault()
     if (!nombre.trim()) {
-      alert('El nombre del rubro es obligatorio')
+      mostrarToast('El nombre del rubro es obligatorio', 'error')
       return
     }
 
@@ -180,9 +182,9 @@ function Secciones() {
 
     if (resultado.error) {
       if (resultado.error.code === '23505') {
-        alert('Ya existe un rubro con ese nombre (URL duplicada). Cambiá el nombre.')
+        mostrarToast('Ya existe un rubro con ese nombre (URL duplicada). Cambiá el nombre.', 'error')
       } else {
-        alert('Error al guardar el rubro: ' + resultado.error.message)
+        mostrarToast('Error al guardar el rubro: ' + resultado.error.message, 'error')
       }
       setGuardando(false)
       return
@@ -194,14 +196,14 @@ function Secciones() {
   }
 
   async function eliminarRubro(id) {
-    const confirmar = window.confirm(
+    const confirmado = await confirmar(
       '¿Seguro que querés eliminar este rubro? Los productos y combos que lo tengan asignado quedarán sin rubro (dejarán de publicarse).'
     )
-    if (!confirmar) return
+    if (!confirmado) return
 
     const { error } = await supabase.from('secciones').delete().eq('id_seccion', id)
     if (error) {
-      alert('No se pudo eliminar: ' + error.message)
+      mostrarToast('No se pudo eliminar: ' + error.message, 'error')
     } else {
       if (editandoId === id) limpiarFormulario()
       cargarSecciones()
@@ -214,7 +216,7 @@ function Secciones() {
       .update({ visible: !rubro.visible })
       .eq('id_seccion', rubro.id_seccion)
     if (error) {
-      alert('No se pudo cambiar la visibilidad: ' + error.message)
+      mostrarToast('No se pudo cambiar la visibilidad: ' + error.message, 'error')
     } else {
       cargarSecciones()
     }

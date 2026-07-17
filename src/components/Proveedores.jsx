@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function Proveedores() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [proveedores, setProveedores] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -53,7 +55,7 @@ function Proveedores() {
   async function guardar(e) {
     e.preventDefault()
     if (!descripcion.trim()) {
-      alert('La descripción es obligatoria')
+      mostrarToast('La descripción es obligatoria', 'error')
       return
     }
 
@@ -65,13 +67,13 @@ function Proveedores() {
         .update({ descripcion })
         .eq('id_proveedor', editandoId)
 
-      if (error) alert('Error al actualizar: ' + error.message)
+      if (error) mostrarToast('Error al actualizar: ' + error.message, 'error')
     } else {
       const { error } = await supabase
         .from('proveedores')
         .insert({ descripcion })
 
-      if (error) alert('Error al crear: ' + error.message)
+      if (error) mostrarToast('Error al crear: ' + error.message, 'error')
     }
 
     setGuardando(false)
@@ -81,8 +83,8 @@ function Proveedores() {
   }
 
   async function eliminar(id) {
-    const confirmar = window.confirm('¿Seguro que querés eliminar este proveedor?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este proveedor?')
+    if (!confirmado) return
 
     const { error } = await supabase
       .from('proveedores')
@@ -90,7 +92,7 @@ function Proveedores() {
       .eq('id_proveedor', id)
 
     if (error) {
-      alert('No se pudo eliminar. Puede que esté siendo usado en algún gasto.\n\nDetalle: ' + error.message)
+      mostrarToast('No se pudo eliminar. Puede que esté siendo usado en algún gasto. Detalle: ' + error.message, 'error')
     } else {
       cargarProveedores()
     }

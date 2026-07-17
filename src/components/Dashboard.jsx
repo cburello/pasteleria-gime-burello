@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { generarListaPreciosDesdeBD } from '../lib/listaPreciosPdf'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function useEsMobile() {
   const [esMobile, setEsMobile] = useState(
@@ -15,6 +16,7 @@ function useEsMobile() {
 }
 
 function Dashboard({ onAbrirPedido }) {
+  const { mostrarToast } = useNotificaciones()
   const esMobile = useEsMobile()
   const [cargando, setCargando] = useState(true)
   const [proximosEntregar, setProximosEntregar] = useState([])
@@ -126,7 +128,7 @@ function Dashboard({ onAbrirPedido }) {
     try {
       await generarListaPreciosDesdeBD(supabase, tipoListaPdf)
     } catch (e) {
-      alert('No se pudo generar la lista de precios: ' + e.message)
+      mostrarToast('No se pudo generar la lista de precios: ' + e.message, 'error')
     }
     setGenerandoPdf(false)
   }

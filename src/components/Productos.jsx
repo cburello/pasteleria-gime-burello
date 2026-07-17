@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function Productos() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [productos, setProductos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -55,19 +57,19 @@ function Productos() {
   }
 
   async function eliminarProducto(id) {
-    const confirmar = window.confirm('¿Seguro que querés eliminar este producto? También se eliminará su historial de precios.')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este producto? También se eliminará su historial de precios.')
+    if (!confirmado) return
 
     const { error: errorPrecios } = await supabase.from('precios').delete().eq('id_producto', id)
     if (errorPrecios) {
-      alert('Error al eliminar precios del producto: ' + errorPrecios.message)
+      mostrarToast('Error al eliminar precios del producto: ' + errorPrecios.message, 'error')
       return
     }
 
     const { error } = await supabase.from('productos').delete().eq('id_producto', id)
 
     if (error) {
-      alert('No se pudo eliminar el producto. Puede estar usado en algún combo o pedido.\n\nDetalle: ' + error.message)
+      mostrarToast('No se pudo eliminar el producto. Puede estar usado en algún combo o pedido. Detalle: ' + error.message, 'error')
     } else {
       cargarProductos()
     }
@@ -157,6 +159,7 @@ function Productos() {
 // SUBCOMPONENTE: Detalle de producto (cabecera + simulador + historial de precios)
 // ============================================================
 function DetalleProducto({ producto, onVolver }) {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [descripcion, setDescripcion] = useState(producto.descripcion)
   const [idReceta, setIdReceta] = useState(producto.id_receta)
   const [coeficiente, setCoeficiente] = useState(producto.coeficiente_ganancia)
@@ -252,7 +255,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   async function subirImagen(file) {
     if (!file) return
     if (!producto.id_producto) {
-      alert('Guardá primero los datos generales para poder subir la imagen.')
+      mostrarToast('Guardá primero los datos generales para poder subir la imagen.', 'error')
       return
     }
     setSubiendoImagen(true)
@@ -262,7 +265,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       .from('catalogo')
       .upload(ruta, file, { upsert: true, contentType: file.type })
     if (error) {
-      alert('Error al subir la imagen: ' + error.message)
+      mostrarToast('Error al subir la imagen: ' + error.message, 'error')
       setSubiendoImagen(false)
       return
     }
@@ -342,7 +345,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
 
   async function guardarCabecera() {
     if (!descripcion.trim() || !idReceta || !coeficiente) {
-      alert('Descripción, receta y coeficiente de ganancia son obligatorios')
+      mostrarToast('Descripción, receta y coeficiente de ganancia son obligatorios', 'error')
       return null
     }
 
@@ -365,14 +368,14 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     if (producto.id_producto) {
       const { error } = await supabase.from('productos').update(registro).eq('id_producto', producto.id_producto)
       if (error) {
-        alert('Error al guardar: ' + error.message)
+        mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardandoCabecera(false)
         return null
       }
     } else {
       const { data, error } = await supabase.from('productos').insert(registro).select().single()
       if (error) {
-        alert('Error al guardar: ' + error.message)
+        mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardandoCabecera(false)
         return null
       }
@@ -386,7 +389,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   async function handleGuardarCabecera() {
     const id = await guardarCabecera()
     if (id) {
-      alert('Producto guardado correctamente')
+      mostrarToast('Producto guardado correctamente')
       if (!producto.id_producto) {
         producto.id_producto = id
         window.location.reload()
@@ -440,24 +443,24 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
 
   async function guardarPrecio() {
     if (!fechaInicioPrecio || !precioVentaManual) {
-      alert('Fecha de inicio y precio de venta son obligatorios')
+      mostrarToast('Fecha de inicio y precio de venta son obligatorios', 'error')
       return
     }
 
     if (precioMayoristaManual === '' || precioMayoristaManual === null) {
-      alert('Falta el precio mayorista. Es obligatorio: si no lo cargás, los clientes mayoristas quedan sin su precio.')
+      mostrarToast('Falta el precio mayorista. Es obligatorio: si no lo cargás, los clientes mayoristas quedan sin su precio.', 'error')
       return
     }
 
     if (isNaN(parseFloat(precioMayoristaManual)) || parseFloat(precioMayoristaManual) < 0) {
-      alert('El precio mayorista no es válido.')
+      mostrarToast('El precio mayorista no es válido.', 'error')
       return
     }
 
     const finEfectivo = fechaFinPrecio || '3000-12-31'
 
     if (new Date(fechaInicioPrecio) > new Date(finEfectivo)) {
-      alert('La fecha de inicio no puede ser posterior a la fecha de fin')
+      mostrarToast('La fecha de inicio no puede ser posterior a la fecha de fin', 'error')
       return
     }
 
@@ -477,7 +480,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     }
 
     if (noAjustables.length > 0) {
-      alert('Hay un conflicto de vigencia con otro precio que no se puede resolver automáticamente. Revisá las fechas.')
+      mostrarToast('Hay un conflicto de vigencia con otro precio que no se puede resolver automáticamente. Revisá las fechas.', 'error')
       return
     }
 
@@ -507,12 +510,12 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     }
 
     if (resultado.error) {
-      alert('Error al guardar el precio: ' + resultado.error.message)
+      mostrarToast('Error al guardar el precio: ' + resultado.error.message, 'error')
     } else {
       const avisoAjuste = ajustables.length > 0
         ? `\n\nSe actualizó automáticamente la vigencia de ${ajustables.length} precio(s) anterior(es).`
         : ''
-      alert('Precio guardado correctamente.' + avisoAjuste)
+      mostrarToast('Precio guardado correctamente.' + avisoAjuste)
       setEditandoPrecioId(null)
       setPrecioVentaManual('')
       cargarPrecios()
@@ -522,13 +525,13 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   }
 
   async function eliminarPrecio(id) {
-    const confirmar = window.confirm('¿Seguro que querés eliminar este registro de precio?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este registro de precio?')
+    if (!confirmado) return
 
     const { error } = await supabase.from('precios').delete().eq('id_precio', id)
 
     if (error) {
-      alert('No se pudo eliminar: ' + error.message)
+      mostrarToast('No se pudo eliminar: ' + error.message, 'error')
     } else {
       cargarPrecios()
     }

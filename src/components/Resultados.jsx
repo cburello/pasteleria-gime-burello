@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function Resultados() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -171,16 +173,16 @@ function Resultados() {
     const periodoActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
 
     if (periodo >= periodoActual) {
-      const confirmarAdelantado = window.confirm(
+      const confirmadoAdelantado = await confirmar(
         `El período seleccionado aún no llegó al final del mes. ¿Seguro quiere realizar el cierre?`
       )
-      if (!confirmarAdelantado) return
+      if (!confirmadoAdelantado) return
     }
 
-    const confirmar = window.confirm(
+    const confirmado = await confirmar(
       `Se realizará el cierre del período ${formatearPeriodo(periodo)}. ¿Confirma?`
     )
-    if (!confirmar) return
+    if (!confirmado) return
 
     setCerrandoPeriodo(true)
 
@@ -201,10 +203,11 @@ function Resultados() {
       }
 
       if (mediosSinSaldo.length > 0) {
-        alert(
+        mostrarToast(
           'No se puede cerrar el período porque falta el saldo inicial para uno o más medios de pago: ' +
             mediosSinSaldo.join(', ') +
-            '.\n\nCargá el saldo inicial correspondiente directamente en la tabla "saldos" de Supabase antes de cerrar.'
+            '.\n\nCargá el saldo inicial correspondiente directamente en la tabla "saldos" de Supabase antes de cerrar.',
+          'error'
         )
         setCerrandoPeriodo(false)
         return
@@ -258,11 +261,11 @@ function Resultados() {
         }
       }
 
-      alert(`Período ${formatearPeriodo(periodo)} cerrado correctamente.`)
+      mostrarToast(`Período ${formatearPeriodo(periodo)} cerrado correctamente.`)
       setPeriodosSeleccionados([])
       await cargarDatos()
     } catch (err) {
-      alert('Error al cerrar el período: ' + err.message)
+      mostrarToast('Error al cerrar el período: ' + err.message, 'error')
     }
 
     setCerrandoPeriodo(false)

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function Combos() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [combos, setCombos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -70,19 +72,19 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   }
 
   async function eliminarCombo(id) {
-    const confirmar = window.confirm('¿Seguro que querés eliminar este combo? También se eliminará su detalle de productos.')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este combo? También se eliminará su detalle de productos.')
+    if (!confirmado) return
 
     const { error: errorDetalle } = await supabase.from('detalle_combo').delete().eq('id_combo', id)
     if (errorDetalle) {
-      alert('Error al eliminar el detalle del combo: ' + errorDetalle.message)
+      mostrarToast('Error al eliminar el detalle del combo: ' + errorDetalle.message, 'error')
       return
     }
 
     const { error } = await supabase.from('combos').delete().eq('id_combo', id)
 
     if (error) {
-      alert('No se pudo eliminar el combo. Puede estar usado en algún pedido.\n\nDetalle: ' + error.message)
+      mostrarToast('No se pudo eliminar el combo. Puede estar usado en algún pedido.\n\nDetalle: ' + error.message, 'error')
     } else {
       cargarCombos()
     }
@@ -175,6 +177,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
 // SUBCOMPONENTE: Detalle de combo (cabecera + productos incluidos)
 // ============================================================
 function DetalleCombo({ combo, onVolver }) {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [descripcion, setDescripcion] = useState(combo.descripcion)
   const [precio, setPrecio] = useState(combo.precio || '')
   const [fechaInicio, setFechaInicio] = useState(combo.fecha_inicio?.slice(0, 10) || '')
@@ -250,7 +253,7 @@ function DetalleCombo({ combo, onVolver }) {
   async function subirImagen(file) {
     if (!file) return
     if (!combo.id_combo) {
-      alert('Guardá primero el combo para poder subir la imagen.')
+      mostrarToast('Guardá primero el combo para poder subir la imagen.', 'error')
       return
     }
     setSubiendoImagen(true)
@@ -260,7 +263,7 @@ function DetalleCombo({ combo, onVolver }) {
       .from('catalogo')
       .upload(ruta, file, { upsert: true, contentType: file.type })
     if (error) {
-      alert('Error al subir la imagen: ' + error.message)
+      mostrarToast('Error al subir la imagen: ' + error.message, 'error')
       setSubiendoImagen(false)
       return
     }
@@ -386,17 +389,17 @@ function DetalleCombo({ combo, onVolver }) {
 
   async function agregarProducto() {
     if (!combo.id_combo) {
-      alert('Primero guardá los datos generales del combo antes de agregar productos')
+      mostrarToast('Primero guardá los datos generales del combo antes de agregar productos', 'error')
       return
     }
     if (!productoParaAgregar || !cantidadProducto) {
-      alert('Seleccioná un producto e indicá la cantidad')
+      mostrarToast('Seleccioná un producto e indicá la cantidad', 'error')
       return
     }
 
     const yaExiste = productosCombo.find((p) => p.id_producto === productoParaAgregar.id_producto)
     if (yaExiste) {
-      alert('Ese producto ya está agregado al combo. Eliminalo primero si querés cambiar la cantidad.')
+      mostrarToast('Ese producto ya está agregado al combo. Eliminalo primero si querés cambiar la cantidad.', 'error')
       return
     }
 
@@ -407,7 +410,7 @@ function DetalleCombo({ combo, onVolver }) {
     })
 
     if (error) {
-      alert('Error al agregar producto: ' + error.message)
+      mostrarToast('Error al agregar producto: ' + error.message, 'error')
     } else {
       setProductoParaAgregar(null)
       setTextoBuscarProducto('')
@@ -417,8 +420,8 @@ function DetalleCombo({ combo, onVolver }) {
   }
 
   async function quitarProducto(idProducto) {
-    const confirmar = window.confirm('¿Quitar este producto del combo?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Quitar este producto del combo?')
+    if (!confirmado) return
 
     const { error } = await supabase
       .from('detalle_combo')
@@ -427,7 +430,7 @@ function DetalleCombo({ combo, onVolver }) {
       .eq('id_producto', idProducto)
 
     if (error) {
-      alert('Error al quitar el producto: ' + error.message)
+      mostrarToast('Error al quitar el producto: ' + error.message, 'error')
     } else {
       cargarProductosDelCombo()
     }
@@ -458,14 +461,14 @@ function DetalleCombo({ combo, onVolver }) {
 
   async function guardarCombo() {
     if (!descripcion.trim() || !fechaInicio || !precio) {
-      alert('Descripción, fecha de inicio y precio son obligatorios')
+      mostrarToast('Descripción, fecha de inicio y precio son obligatorios', 'error')
       return null
     }
 
     const finEfectivo = fechaFin || '3000-12-31'
 
     if (new Date(fechaInicio) > new Date(finEfectivo)) {
-      alert('La fecha de inicio no puede ser posterior a la fecha de fin')
+      mostrarToast('La fecha de inicio no puede ser posterior a la fecha de fin', 'error')
       return null
     }
 
@@ -488,7 +491,7 @@ function DetalleCombo({ combo, onVolver }) {
     }
 
     if (noAjustables.length > 0) {
-      alert('Hay un conflicto de vigencia con otra versión de este combo que no se puede resolver automáticamente. Revisá las fechas.')
+      mostrarToast('Hay un conflicto de vigencia con otra versión de este combo que no se puede resolver automáticamente. Revisá las fechas.', 'error')
       return null
     }
 
@@ -519,14 +522,14 @@ function DetalleCombo({ combo, onVolver }) {
     if (combo.id_combo) {
       const { error } = await supabase.from('combos').update(registro).eq('id_combo', combo.id_combo)
       if (error) {
-        alert('Error al guardar: ' + error.message)
+        mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardando(false)
         return null
       }
     } else {
       const { data, error } = await supabase.from('combos').insert(registro).select().single()
       if (error) {
-        alert('Error al guardar: ' + error.message)
+        mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardando(false)
         return null
       }
@@ -540,7 +543,7 @@ function DetalleCombo({ combo, onVolver }) {
   async function handleGuardarCombo() {
     const id = await guardarCombo()
     if (id) {
-      alert('Combo guardado correctamente')
+      mostrarToast('Combo guardado correctamente')
       if (!combo.id_combo) {
         combo.id_combo = id
         window.location.reload()

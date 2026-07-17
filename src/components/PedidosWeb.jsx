@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 // Detecta mobile igual que en el resto de la app (768px)
 function useEsMobile() {
@@ -36,6 +37,7 @@ function formatearFecha(f) {
 }
 
 function PedidosWeb() {
+  const { confirmar: confirmarDialogo } = useNotificaciones()
   const esMobile = useEsMobile()
   const [pedidos, setPedidos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -128,7 +130,7 @@ function PedidosWeb() {
       setMensaje({ tipo: 'error', texto: 'El pedido no tiene items.' })
       return
     }
-    if (!window.confirm('¿Confirmar este pedido y crear el pedido definitivo?')) return
+    if (!(await confirmarDialogo('¿Confirmar este pedido y crear el pedido definitivo?'))) return
 
     setProcesando(true)
     const guardado = await guardarCambios()
@@ -151,7 +153,7 @@ function PedidosWeb() {
 
   async function descartar() {
     if (!seleccionado) return
-    if (!window.confirm('¿Descartar este pedido web? No se creará ningún pedido.')) return
+    if (!(await confirmarDialogo('¿Descartar este pedido web? No se creará ningún pedido.'))) return
     setProcesando(true)
     const { error } = await supabase
       .from('pedido_web')

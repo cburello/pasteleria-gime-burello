@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function CostosMateriaPrima({ materiaPrima, onVolver }) {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [costos, setCostos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -78,14 +80,14 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     e.preventDefault()
 
     if (!fechaInicio || !presentacion.trim() || !precio) {
-      alert('Fecha de inicio, presentación y precio son obligatorios')
+      mostrarToast('Fecha de inicio, presentación y precio son obligatorios', 'error')
       return
     }
 
     const finEfectivo = fechaFin || '3000-12-31'
 
     if (new Date(fechaInicio) > new Date(finEfectivo)) {
-      alert('La fecha de inicio no puede ser posterior a la fecha de fin')
+      mostrarToast('La fecha de inicio no puede ser posterior a la fecha de fin', 'error')
       return
     }
 
@@ -116,9 +118,10 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       const detalle = noAjustables
         .map((c) => `• ${c.presentacion} ($${c.precio}) vigente desde ${formatearFecha(c.fecha_inicio)} hasta ${formatearFecha(c.fecha_fin)}`)
         .join('\n')
-      alert(
+      mostrarToast(
         `No se puede guardar automáticamente: hay un conflicto de fechas que no se puede resolver solo.\n\n${detalle}\n\n` +
-        `Editá o eliminá ese registro primero.`
+        `Editá o eliminá ese registro primero.`,
+        'error'
       )
       return
     }
@@ -134,7 +137,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
         .eq('id_costo', c.id_costo)
 
       if (errorUpdate) {
-        alert('Error al cerrar la vigencia del costo anterior: ' + errorUpdate.message)
+        mostrarToast('Error al cerrar la vigencia del costo anterior: ' + errorUpdate.message, 'error')
         setGuardando(false)
         return
       }
@@ -162,12 +165,12 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     }
 
     if (resultado.error) {
-      alert('Error al guardar: ' + resultado.error.message)
+      mostrarToast('Error al guardar: ' + resultado.error.message, 'error')
     } else {
       const avisoAjuste = ajustables.length > 0
-        ? `\n\nSe actualizó automáticamente la vigencia de ${ajustables.length} registro(s) anterior(es).`
+        ? ` Se actualizó automáticamente la vigencia de ${ajustables.length} registro(s) anterior(es).`
         : ''
-      if (avisoAjuste) alert('Costo guardado correctamente.' + avisoAjuste)
+      if (avisoAjuste) mostrarToast('Costo guardado correctamente.' + avisoAjuste)
       limpiarFormulario()
       cargarCostos()
     }
@@ -176,8 +179,8 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   }
 
   async function eliminar(id) {
-    const confirmar = window.confirm('¿Seguro que querés eliminar este registro de costo?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este registro de costo?')
+    if (!confirmado) return
 
     const { error } = await supabase
       .from('costos_materia_prima')
@@ -185,7 +188,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       .eq('id_costo', id)
 
     if (error) {
-      alert('No se pudo eliminar: ' + error.message)
+      mostrarToast('No se pudo eliminar: ' + error.message, 'error')
     } else {
       cargarCostos()
     }

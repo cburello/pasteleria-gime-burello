@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { generarListaPreciosPdf } from '../lib/listaPreciosPdf'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function fechaLocalHoy() {
   const hoy = new Date()
@@ -20,6 +21,7 @@ function restarUnDia(fechaStr) {
 }
 
 function PreciosMantenimiento() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [filas, setFilas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -92,7 +94,7 @@ function PreciosMantenimiento() {
     const cMay = parseFloat(coefMayorista)
 
     if (isNaN(cMin) || isNaN(cMay) || cMin <= 0 || cMay <= 0) {
-      alert('Los coeficientes deben ser números mayores a 0. Ej: 1.10 para +10%')
+      mostrarToast('Los coeficientes deben ser números mayores a 0. Ej: 1.10 para +10%', 'error')
       return
     }
 
@@ -138,14 +140,14 @@ function PreciosMantenimiento() {
 
   async function aplicarCambios() {
     if (modificadas.length === 0) {
-      alert('No hay cambios para aplicar.')
+      mostrarToast('No hay cambios para aplicar.', 'error')
       return
     }
 
-    const confirmar = window.confirm(
-      `Se van a actualizar los precios de ${modificadas.length} producto(s) con vigencia desde hoy.\n\n¿Confirmás?`
+    const confirmado = await confirmar(
+      `Se van a actualizar los precios de ${modificadas.length} producto(s) con vigencia desde hoy. ¿Confirmás?`
     )
-    if (!confirmar) return
+    if (!confirmado) return
 
     setGuardando(true)
 
@@ -212,9 +214,9 @@ function PreciosMantenimiento() {
     setGuardando(false)
 
     if (errores.length > 0) {
-      alert('Algunos precios no se pudieron actualizar:\n\n' + errores.join('\n'))
+      mostrarToast('Algunos precios no se pudieron actualizar:\n\n' + errores.join('\n'), 'error')
     } else {
-      alert(`✅ Se actualizaron los precios de ${modificadas.length} producto(s) correctamente.`)
+      mostrarToast(`Se actualizaron los precios de ${modificadas.length} producto(s) correctamente.`)
     }
 
     cargarDatos()

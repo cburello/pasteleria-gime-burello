@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 const COL = {
   coral: '#E8765C', coralDark: '#D4624A', bg: '#FFF5F2', card: '#FFFFFF',
@@ -8,6 +9,7 @@ const COL = {
 }
 
 function CaratulaWeb() {
+  const { confirmar } = useNotificaciones()
   const [caratula, setCaratula] = useState(null)
   const [segundos, setSegundos] = useState('5')
   const [imagenes, setImagenes] = useState([])
@@ -77,7 +79,7 @@ function CaratulaWeb() {
     setImagenes((prev) => prev.map((i) => (i.id_caratula_imagen === img.id_caratula_imagen ? { ...i, visible: !i.visible } : i)))
   }
   async function quitarImagen(img) {
-    if (!window.confirm('¿Quitar esta imagen del carrusel?')) return
+    if (!(await confirmar('¿Quitar esta imagen del carrusel?'))) return
     const { error } = await supabase.from('caratula_imagenes').delete().eq('id_caratula_imagen', img.id_caratula_imagen)
     if (error) { aviso('error', 'Error al quitar: ' + error.message); return }
     aviso('ok', 'Imagen quitada.')
@@ -140,7 +142,7 @@ function CaratulaWeb() {
   }
 
   async function eliminarPromo(p) {
-    if (!window.confirm('¿Eliminar esta promoción?')) return
+    if (!(await confirmar('¿Eliminar esta promoción?'))) return
     const { error } = await supabase.from('promo_inicio').delete().eq('id_promo', p.id_promo)
     if (error) { aviso('error', 'Error al eliminar: ' + error.message); return }
     aviso('ok', 'Promoción eliminada.')

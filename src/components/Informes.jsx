@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabase'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { LOGO_BASE64 } from '../lib/logoBase64'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function Informes() {
+  const { mostrarToast } = useNotificaciones()
   // Primer día del mes en curso
   function primerDiaDelMes() {
     const hoy = new Date()
@@ -52,7 +54,7 @@ function formatearFecha(fecha) {
       .order('fecha_pedido', { ascending: true })
 
     if (errorPedidos) {
-      alert('Error al obtener los pedidos: ' + errorPedidos.message)
+      mostrarToast('Error al obtener los pedidos: ' + errorPedidos.message, 'error')
       return null
     }
 
@@ -115,7 +117,7 @@ async function generarInformeDetallado() {
     const datos = await obtenerDatosInforme()
     if (datos === null) return
     if (datos.length === 0) {
-      alert('No se encontraron pedidos en el rango de fechas indicado.')
+      mostrarToast('No se encontraron pedidos en el rango de fechas indicado.', 'error')
       return
     }
 
@@ -189,7 +191,7 @@ autoTable(doc, {
     const datos = await obtenerDatosInforme()
     if (datos === null) return
     if (datos.length === 0) {
-      alert('No se encontraron pedidos en el rango de fechas indicado.')
+      mostrarToast('No se encontraron pedidos en el rango de fechas indicado.', 'error')
       return
     }
 
@@ -299,7 +301,7 @@ autoTable(doc, {
       .lte('fecha_pedido', fechaHasta)
 
     if (error) {
-      alert('Error al obtener los pedidos: ' + error.message)
+      mostrarToast('Error al obtener los pedidos: ' + error.message, 'error')
       return null
     }
     if (!pedidos || pedidos.length === 0) return []
@@ -340,11 +342,11 @@ autoTable(doc, {
 
   async function handleConsultarRanking() {
     if (!fechaDesde || !fechaHasta) {
-      alert('Completá ambas fechas.')
+      mostrarToast('Completá ambas fechas.', 'error')
       return
     }
     if (fechaDesde > fechaHasta) {
-      alert('La fecha desde no puede ser posterior a la fecha hasta.')
+      mostrarToast('La fecha desde no puede ser posterior a la fecha hasta.', 'error')
       return
     }
     setConsultando(true)
@@ -356,7 +358,7 @@ autoTable(doc, {
 
   async function generarPdfRanking() {
     if (!ranking || ranking.length === 0) {
-      alert('Primero consultá el ranking.')
+      mostrarToast('Primero consultá el ranking.', 'error')
       return
     }
     const lista = ordenar(ranking)
@@ -417,11 +419,11 @@ autoTable(doc, {
 
   async function handleGenerar() {
     if (!fechaDesde || !fechaHasta) {
-      alert('Indicá fecha desde y fecha hasta')
+      mostrarToast('Indicá fecha desde y fecha hasta', 'error')
       return
     }
     if (new Date(fechaDesde) > new Date(fechaHasta)) {
-      alert('La fecha desde no puede ser posterior a la fecha hasta')
+      mostrarToast('La fecha desde no puede ser posterior a la fecha hasta', 'error')
       return
     }
 

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function Retiros() {
+  const { mostrarToast, confirmar } = useNotificaciones()
   const [retiros, setRetiros] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -131,8 +133,9 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
         'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
       ]
-      alert(
-        `El período correspondiente a la fecha ingresada ya está cerrado. La fecha se ajustó automáticamente a ${nombresMes[f.getMonth()]} ${f.getFullYear()}.`
+      mostrarToast(
+        `El período correspondiente a la fecha ingresada ya está cerrado. La fecha se ajustó automáticamente a ${nombresMes[f.getMonth()]} ${f.getFullYear()}.`,
+        'error'
       )
     }
 
@@ -143,7 +146,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     e.preventDefault()
 
     if (!fecha || !importe || !idMedioPagoOrigen || !idMedioPagoDestino) {
-      alert('Fecha, importe, origen y destino son obligatorios')
+      mostrarToast('Fecha, importe, origen y destino son obligatorios', 'error')
       return
     }
 
@@ -157,7 +160,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       const esEfectivo = medioElegido?.descripcion?.toLowerCase() === 'efectivo'
 
       if (!esEfectivo) {
-        alert('Origen y destino solo pueden ser iguales si ambos son "Efectivo". Para otros medios de pago, elegí un destino distinto.')
+        mostrarToast('Origen y destino solo pueden ser iguales si ambos son "Efectivo". Para otros medios de pago, elegí un destino distinto.', 'error')
         return
       }
     }
@@ -180,7 +183,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     }
 
     if (resultado.error) {
-      alert('Error al guardar: ' + resultado.error.message)
+      mostrarToast('Error al guardar: ' + resultado.error.message, 'error')
     } else {
       limpiarFormulario()
       cargarRetiros()
@@ -190,13 +193,13 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   }
 
   async function eliminar(id) {
-    const confirmar = window.confirm('¿Seguro que querés eliminar este retiro?')
-    if (!confirmar) return
+    const confirmado = await confirmar('¿Seguro que querés eliminar este retiro?')
+    if (!confirmado) return
 
     const { error } = await supabase.from('retiros').delete().eq('id_retiro', id)
 
     if (error) {
-      alert('No se pudo eliminar: ' + error.message)
+      mostrarToast('No se pudo eliminar: ' + error.message, 'error')
     } else {
       cargarRetiros()
     }
