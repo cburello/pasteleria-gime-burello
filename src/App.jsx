@@ -26,15 +26,27 @@ import Secciones from './components/Secciones'
 import PedidosWeb from './components/PedidosWeb'
 import CaratulaWeb from './components/CaratulaWeb'
 
+function useEsMobile() {
+  const [esMobile, setEsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
+  useEffect(() => {
+    function handler() { setEsMobile(window.innerWidth <= 768) }
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  return esMobile
+}
+
 function App() {
+  const esMobile = useEsMobile()
   const { mostrarToast } = useNotificaciones()
 const [sesion, setSesion] = useState(null)
   const [verificandoSesion, setVerificandoSesion] = useState(true)
   const [bloqueado, setBloqueado] = useState(false)
   const [paginaActual, setPaginaActual] = useState('inicio')
   const [idPedidoAbrir, setIdPedidoAbrir] = useState(null)
-  //const TIEMPO_INACTIVIDAD_MS = 4 * 60 * 60 * 1000 // 4 horas
-  const TIEMPO_INACTIVIDAD_MS = 10000  //10 segundos
+  const TIEMPO_INACTIVIDAD_MS = 4 * 60 * 60 * 1000 // 4 horas
   const [mostrarCambiarPassword, setMostrarCambiarPassword] = useState(false)
   const [puedeActivarBiometria, setPuedeActivarBiometria] = useState(false)
 
@@ -137,8 +149,12 @@ const [sesion, setSesion] = useState(null)
         </div>
         <div className="header-acciones">
           {puedeActivarBiometria && (
-            <button className="btn-cambiar-password" onClick={activarBiometria}>
-              🔓 Activar huella / Face ID
+            <button
+              className="btn-activar-biometria"
+              onClick={activarBiometria}
+              title="Activar huella / Face ID"
+            >
+              {esMobile ? '🔓' : '🔓 Activar huella / Face ID'}
             </button>
           )}
           <button className="btn-cambiar-password" onClick={() => setMostrarCambiarPassword(true)}>

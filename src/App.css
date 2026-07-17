@@ -593,7 +593,8 @@ margin-top: 16px;
   flex-shrink: 0;
 }
 
-.btn-cambiar-password {
+.btn-cambiar-password,
+.btn-activar-biometria {
   flex-shrink: 0;
   padding: 9px 18px;
   background-color: transparent;
@@ -608,7 +609,8 @@ margin-top: 16px;
   white-space: nowrap;
 }
 
-.btn-cambiar-password:hover {
+.btn-cambiar-password:hover,
+.btn-activar-biometria:hover {
   background-color: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.8);
 }
@@ -1216,6 +1218,12 @@ margin-top: 16px;
   /* Ocultar "Cambiar contraseña" en mobile para ganar espacio */
   .btn-cambiar-password {
     display: none;
+  }
+
+  /* Biometría: se mantiene visible en mobile (compacta, sin texto) */
+  .btn-activar-biometria {
+    padding: 7px 10px;
+    font-size: 15px;
   }
 
   .btn-cerrar-sesion {
