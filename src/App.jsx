@@ -25,6 +25,7 @@ import PreciosMantenimiento from './components/PreciosMantenimiento'
 import Secciones from './components/Secciones'
 import PedidosWeb from './components/PedidosWeb'
 import CaratulaWeb from './components/CaratulaWeb'
+import Presupuestos from './components/Presupuestos'
 
 function useEsMobile() {
   const [esMobile, setEsMobile] = useState(
@@ -187,6 +188,7 @@ const [sesion, setSesion] = useState(null)
         )}
 		{paginaActual === 'informes' && <Informes />}
 		{paginaActual === 'pedidosWeb' && <PedidosWeb />}
+        {paginaActual === 'presupuestos' && <Presupuestos />}
         {paginaActual === 'caratulaWeb' && <CaratulaWeb />}
         {paginaActual === 'proveedores' && <Proveedores />}        
         {paginaActual === 'gastos' && <Gastos />}
