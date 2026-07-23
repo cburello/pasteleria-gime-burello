@@ -63,6 +63,7 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
         { id: 'clientes', label: 'Clientes' },
 		{ id: 'pedidos', label: 'Pedidos' },
         { id: 'pedidosWeb', label: 'Pedidos web' },
+        { id: 'presupuestos', label: 'Presupuestos' },
         { id: 'informes', label: 'Informes' },
       ],
     },
@@ -107,6 +108,7 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
     const itemsMobile = [
       { id: 'inicio',   label: 'Inicio',   icono: '🏠' },
       { id: 'pedidos',  label: 'Pedidos',  icono: '📦' },
+      { id: 'presupuestos', label: 'Presup.', icono: '🧾' },
       { id: 'gastos',   label: 'Gastos',   icono: '💸' },
 	  { id: 'ingresos', label: 'Ingresos', icono: '💰' },
       { id: 'pedidosWeb', label: 'Web', icono: '🛒' },
