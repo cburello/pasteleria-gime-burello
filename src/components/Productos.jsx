@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNotificaciones } from '../hooks/useNotificaciones'
 
@@ -191,12 +191,14 @@ function DetalleProducto({ producto, onVolver }) {
   const [precioMayoristaManual, setPrecioMayoristaManual] = useState('')
   const [guardandoPrecio, setGuardandoPrecio] = useState(false)
   const [editandoPrecioId, setEditandoPrecioId] = useState(null)
+  const refFechaInicioPrecio = useRef(null)
 
   useEffect(() => {
     cargarRecetas()
     cargarSecciones()
     if (producto.id_producto) {
       cargarPrecios()
+      refFechaInicioPrecio.current?.focus()
     } else {
       setCargandoPrecios(false)
     }
@@ -431,6 +433,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     setFechaFinPrecio('3000-12-31')
     setPrecioVentaManual(precioTeoricoSimulado !== null ? precioTeoricoSimulado.toFixed(2) : '')
     setPrecioMayoristaManual('')
+    refFechaInicioPrecio.current?.focus()
   }
 
   function iniciarEdicionPrecio(p) {
@@ -439,6 +442,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     setFechaFinPrecio(p.fecha_fin?.slice(0, 10) || '3000-12-31')
     setPrecioVentaManual(p.precio_venta)
     setPrecioMayoristaManual(p.precio_mayorista != null ? String(p.precio_mayorista) : '')
+    refFechaInicioPrecio.current?.focus()
   }
 
   async function guardarPrecio() {
@@ -770,6 +774,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
               <label>Fecha inicio</label>
               <input
                 type="date"
+                ref={refFechaInicioPrecio}
                 value={fechaInicioPrecio}
                 onChange={(e) => setFechaInicioPrecio(e.target.value)}
               />

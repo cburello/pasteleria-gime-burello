@@ -52,6 +52,7 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
         { id: 'productos', label: 'Productos' },
         { id: 'combos', label: 'Combos' },
         { id: 'preciosMantenimiento', label: 'Mantenimiento de Precios' },
+        { id: 'analisisPrecios', label: 'Análisis de Precios' },
 		{ id: 'secciones', label: 'Secciones web' },
         { id: 'caratulaWeb', label: 'Carátula y promo' },
       ],

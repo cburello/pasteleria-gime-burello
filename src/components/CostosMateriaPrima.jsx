@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNotificaciones } from '../hooks/useNotificaciones'
 
@@ -10,14 +10,16 @@ function CostosMateriaPrima({ materiaPrima, onVolver }) {
   const [guardando, setGuardando] = useState(false)
 
   const [editandoId, setEditandoId] = useState(null)
-  const [fechaInicio, setFechaInicio] = useState('')
+  const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().slice(0, 10))
   const [fechaFin, setFechaFin] = useState('3000-12-31')
   const [presentacion, setPresentacion] = useState('')
   const [unidadMedida, setUnidadMedida] = useState('Gramos')
   const [precio, setPrecio] = useState('')
+  const refFechaInicio = useRef(null)
 
   useEffect(() => {
     cargarCostos()
+    refFechaInicio.current?.focus()
   }, [])
 
   async function cargarCostos() {
@@ -39,11 +41,12 @@ function CostosMateriaPrima({ materiaPrima, onVolver }) {
 
   function limpiarFormulario() {
     setEditandoId(null)
-    setFechaInicio('')
+    setFechaInicio(new Date().toISOString().slice(0, 10))
     setFechaFin('3000-12-31')
     setPresentacion('')
     setUnidadMedida('Gramos')
     setPrecio('')
+    refFechaInicio.current?.focus()
   }
 
   function iniciarEdicion(costo) {
@@ -53,6 +56,7 @@ function CostosMateriaPrima({ materiaPrima, onVolver }) {
     setPresentacion(costo.presentacion)
     setUnidadMedida(costo.unidad_medida)
     setPrecio(costo.precio)
+    refFechaInicio.current?.focus()
   }
 
   function haySuperposicion(inicioA, finA, inicioB, finB) {
@@ -211,6 +215,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
           <label>Fecha inicio</label>
           <input
             type="date"
+            ref={refFechaInicio}
             value={fechaInicio}
             onChange={(e) => setFechaInicio(e.target.value)}
           />
