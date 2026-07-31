@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { generarListaPreciosPdf } from '../lib/listaPreciosPdf'
+import { generarListaPreciosPdf, prepararFotosProductos } from '../lib/listaPreciosPdf'
 import { useNotificaciones } from '../hooks/useNotificaciones'
 
 function fechaLocalHoy() {
@@ -30,6 +30,8 @@ function PreciosMantenimiento() {
   const [coefMinorista, setCoefMinorista] = useState('1.00')
   const [coefMayorista, setCoefMayorista] = useState('1.00')
   const [tipoListaPdf, setTipoListaPdf] = useState('ambos')
+  const [modoPdf, setModoPdf] = useState('foto')
+  const [generandoPdf, setGenerandoPdf] = useState(false)
 
   useEffect(() => {
     cargarDatos()
@@ -51,7 +53,7 @@ function PreciosMantenimiento() {
 
     const { data: productos, error: errProductos } = await supabase
       .from('productos')
-      .select('id_producto, descripcion')
+      .select('id_producto, descripcion, imagen_url')
       .order('descripcion')
 
     if (errProductos) {
@@ -77,6 +79,7 @@ function PreciosMantenimiento() {
       return {
         id_producto: p.id_producto,
         descripcion: p.descripcion,
+        imagen_url: p.imagen_url || null,
         precioVigente: precioVigente || null,
         minoristaActual: precioVigente ? parseFloat(precioVigente.precio_venta) : null,
         mayoristaActual: precioVigente?.precio_mayorista ? parseFloat(precioVigente.precio_mayorista) : null,
@@ -222,23 +225,33 @@ function PreciosMantenimiento() {
     cargarDatos()
   }
 
-  function generarPdf() {
-    const filasPdf = filas.map((f) => ({
-      descripcion: f.descripcion,
-      minorista: f.minoristaNuevo !== '' && !isNaN(parseFloat(f.minoristaNuevo))
-        ? parseFloat(f.minoristaNuevo)
-        : null,
-      mayorista: f.mayoristaNuevo !== '' && !isNaN(parseFloat(f.mayoristaNuevo))
-        ? parseFloat(f.mayoristaNuevo)
-        : null,
-      fecha_inicio: f.precioVigente?.fecha_inicio || null,
-      fecha_fin: f.precioVigente?.fecha_fin || null,
-    }))
-    generarListaPreciosPdf(filasPdf, tipoListaPdf)
+  async function generarPdf() {
+    setGenerandoPdf(true)
+    try {
+      const filasPdf = filas.map((f) => ({
+        descripcion: f.descripcion,
+        minorista: f.minoristaNuevo !== '' && !isNaN(parseFloat(f.minoristaNuevo))
+          ? parseFloat(f.minoristaNuevo)
+          : null,
+        mayorista: f.mayoristaNuevo !== '' && !isNaN(parseFloat(f.mayoristaNuevo))
+          ? parseFloat(f.mayoristaNuevo)
+          : null,
+        fecha_inicio: f.precioVigente?.fecha_inicio || null,
+        fecha_fin: f.precioVigente?.fecha_fin || null,
+      }))
+      const anchoFotoPanel = 210 * 0.4
+      const fotos = modoPdf === 'foto'
+        ? await prepararFotosProductos(filas.map((f) => f.imagen_url), anchoFotoPanel, 297)
+        : []
+      await generarListaPreciosPdf(filasPdf, tipoListaPdf, fotos)
+    } catch (e) {
+      mostrarToast('No se pudo generar el PDF: ' + e.message, 'error')
+    }
+    setGenerandoPdf(false)
   }
 
   return (
-    <div className="modulo modulo-compacto">
+    <div className="modulo">
       <h2>Mantenimiento de Precios</h2>
 
       <p className="ayuda-vigencia">
@@ -283,8 +296,16 @@ function PreciosMantenimiento() {
             <option value="minorista">PDF: Solo minorista</option>
             <option value="mayorista">PDF: Solo mayorista</option>
           </select>
-          <button type="button" className="btn-secundario" onClick={generarPdf}>
-            📄 Generar PDF
+          <select
+            value={modoPdf}
+            onChange={(e) => setModoPdf(e.target.value)}
+            style={{ padding: '9px 10px', border: '1px solid #E8D5CF', borderRadius: '8px', fontSize: '13px' }}
+          >
+            <option value="foto">PDF con Foto</option>
+            <option value="normal">PDF Normal</option>
+          </select>
+          <button type="button" className="btn-secundario" onClick={generarPdf} disabled={generandoPdf}>
+            {generandoPdf ? 'Generando...' : '📄 Generar PDF'}
           </button>
           <button
             type="button"
@@ -304,7 +325,7 @@ function PreciosMantenimiento() {
 
       {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla tabla-compacta">
+          <table className="tabla">
             <thead>
               <tr>
                 <th rowSpan="2" style={{ verticalAlign: 'bottom', padding: '6px 8px', fontSize: '11px' }}>Producto</th>
