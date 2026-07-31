@@ -40,6 +40,9 @@ function useEsMobile() {
   return esMobile
 }
 
+const ENTORNO = (import.meta.env.VITE_APP_ENV || 'produccion').trim().toLowerCase()
+const ES_PRUEBA = ENTORNO === 'prueba' || ENTORNO === 'staging' || ENTORNO === 'test'
+
 function App() {
   const esMobile = useEsMobile()
   const { mostrarToast } = useNotificaciones()
@@ -151,6 +154,13 @@ const [sesion, setSesion] = useState(null)
           <h1>Gime Burello Pasteleria<span>Pastelería</span></h1>
         </div>
         <div className="header-acciones">
+          <span
+            className={`badge-entorno ${ES_PRUEBA ? 'prueba' : 'produccion'}`}
+            title={ES_PRUEBA ? 'Estás conectado a la base de datos de PRUEBA (Pasteleria-Prueba)' : 'Estás conectado a la base de datos de PRODUCCIÓN'}
+            data-icono={ES_PRUEBA ? '🧪' : '🟢'}
+          >
+            {ES_PRUEBA ? '🧪 PRUEBA' : '🟢 PRODUCCIÓN'}
+          </span>
           {puedeActivarBiometria && (
             <button
               className="btn-activar-biometria"

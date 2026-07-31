@@ -141,18 +141,18 @@ function Dashboard({ onAbrirPedido }) {
           background: '#FBEFD9',
           border: '1px solid #E3C77A',
           borderLeft: '4px solid #C9A227',
-          borderRadius: '10px',
-          padding: '12px 14px',
-          marginBottom: '16px',
+          borderRadius: '8px',
+          padding: '6px 10px',
+          marginBottom: '12px',
           color: '#6B5310',
-          fontSize: '.88rem',
-          lineHeight: 1.6,
+          fontSize: '10.5px',
+          lineHeight: 1.4,
         }}
       >
         <strong>⚠️ {sinCostoVigente.length} materia{sinCostoVigente.length > 1 ? 's' : ''} prima
         {sinCostoVigente.length > 1 ? 's' : ''} sin costo vigente.</strong> Los precios teóricos que la usen quedan mal calculados
         hasta que cargues un costo con vigencia a hoy.
-        <div style={{ marginTop: '6px' }}>
+        <div style={{ marginTop: '3px' }}>
           {sinCostoVigente.slice(0, 8).map((m) => m.descripcion).join(' · ')}
           {sinCostoVigente.length > 8 ? ` · y ${sinCostoVigente.length - 8} más` : ''}
         </div>
@@ -269,7 +269,7 @@ function Dashboard({ onAbrirPedido }) {
 
   // ===== VISTA DESKTOP (rediseñada: totales centrados + filas con estado de pago) =====
   return (
-    <div className="modulo">
+    <div className="modulo modulo-compacto">
       <h2>Inicio</h2>
 
       {alertaSinCosto()}
