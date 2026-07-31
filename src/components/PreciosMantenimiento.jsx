@@ -238,7 +238,7 @@ function PreciosMantenimiento() {
   }
 
   return (
-    <div className="modulo">
+    <div className="modulo modulo-compacto">
       <h2>Mantenimiento de Precios</h2>
 
       <p className="ayuda-vigencia">
@@ -304,7 +304,7 @@ function PreciosMantenimiento() {
 
       {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th rowSpan="2" style={{ verticalAlign: 'bottom', padding: '6px 8px', fontSize: '11px' }}>Producto</th>

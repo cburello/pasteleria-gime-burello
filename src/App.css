@@ -159,7 +159,7 @@ body {
 }
 
 .app-content {
-  padding: 16px 24px;
+  padding: 12px 20px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -175,22 +175,22 @@ body {
 .modulo {
   background-color: #FFFFFF;
   border-radius: 12px;
-  padding: 24px;
+  padding: 16px 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .modulo h2 {
   font-family: 'Playfair Display', serif;
   color: #E8765C;
-  margin-bottom: 20px;
-  font-size: 24px;
+  margin-bottom: 14px;
+  font-size: 22px;
 }
 
 /* FORMULARIO */
 .formulario {
   display: flex;
   gap: 10px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
@@ -255,18 +255,18 @@ body {
 
 .tabla th {
   text-align: left;
-  padding: 12px;
+  padding: 9px 10px;
   background-color: #FFF5F2;
   color: #8A6A66;
-  font-size: 13px;
+  font-size: 11.5px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .tabla td {
-  padding: 12px;
+  padding: 8px 10px;
   border-bottom: 1px solid #F5E8E4;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .btn-link {
@@ -345,20 +345,20 @@ body {
 .ayuda-vigencia {
   background-color: #FFF5F2;
   color: #8A6A66;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 8px;
-  font-size: 13px;
-  margin-bottom: 16px;
+  font-size: 12px;
+  margin-bottom: 12px;
 }
 
 /* AVISOS / ANTI-DUPLICADOS */
 .aviso-similar {
   background-color: #FFF3CD;
   color: #8A6D3B;
-  padding: 12px 16px;
+  padding: 9px 14px;
   border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 14px;
+  margin-bottom: 12px;
+  font-size: 12px;
 }
 
 .aviso-ok {
@@ -1533,4 +1533,255 @@ margin-top: 16px;
   padding: 8px 0;
   font-family: 'Poppins', sans-serif;
   cursor: pointer;
+}
+
+/* ============================================================
+   LAYOUT COMPACTO — piloto en Productos.
+   El header/nav compactos solo se activan con la clase ".compacto"
+   (agregada condicionalmente cuando paginaActual === 'productos'),
+   así el resto de las pantallas no cambia todavía.
+   ============================================================ */
+.app-header.compacto {
+  padding: 8px 20px;
+}
+.app-header.compacto .app-logo {
+  width: 38px;
+  height: 38px;
+}
+.app-header.compacto h1 {
+  font-size: 18px;
+}
+.app-header.compacto h1 span {
+  font-size: 11px;
+}
+.app-header.compacto .header-acciones {
+  gap: 6px;
+}
+.app-header.compacto .btn-cerrar-sesion,
+.app-header.compacto .btn-cambiar-password,
+.app-header.compacto .btn-activar-biometria {
+  padding: 5px 12px;
+  font-size: 11.5px;
+}
+
+.app-nav.compacto {
+  padding: 6px 20px;
+}
+.app-nav.compacto .nav-btn {
+  padding: 6px 14px;
+  font-size: 12.5px;
+}
+
+.modulo-compacto {
+  padding: 14px 18px;
+}
+
+/* Cabecera de listado: título + contador + búsqueda + filtro + alta, en una sola fila */
+.cabecera-lista {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.cabecera-lista h2 {
+  font-family: 'Playfair Display', serif;
+  color: #E8765C;
+  font-size: 19px;
+  margin: 0;
+  white-space: nowrap;
+}
+.cabecera-lista .contador {
+  color: #8A6A66;
+  font-size: 11px;
+  background: #FFF5F2;
+  padding: 2px 9px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.cabecera-lista .buscador-inline {
+  flex: 1;
+  min-width: 160px;
+}
+.cabecera-lista .buscador-inline input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #E8D5CF;
+  border-radius: 7px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.cabecera-lista .buscador-inline input:focus {
+  outline: none;
+  border-color: #E8765C;
+}
+.cabecera-lista select.filtro-rubro {
+  padding: 8px 10px;
+  border: 1px solid #E8D5CF;
+  border-radius: 7px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  color: #4A2C2A;
+  background: #fff;
+  max-width: 160px;
+}
+.cabecera-lista .btn-primario {
+  padding: 8px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Tabla más densa */
+.tabla-compacta th {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+.tabla-compacta td {
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+
+.icono-accion {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 2px 6px;
+  line-height: 1;
+  border-radius: 4px;
+}
+.icono-accion:hover {
+  background: #FFF5F2;
+}
+
+/* Detalle de producto: cabecera compacta + 2 columnas (datos/simulador | tabs) */
+.detalle-cabecera-compacta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.detalle-cabecera-compacta h2 {
+  font-family: 'Playfair Display', serif;
+  color: #E8765C;
+  font-size: 18px;
+  margin: 0;
+}
+.detalle-cabecera-compacta .id-badge {
+  color: #8A6A66;
+  font-size: 11px;
+  background: #FFF5F2;
+  padding: 2px 9px;
+  border-radius: 10px;
+}
+
+.detalle-dos-columnas {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+.detalle-sidebar {
+  width: 260px;
+  flex: none;
+}
+.detalle-sidebar .rotulo-grupo {
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #8A6A66;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.detalle-sidebar .campos-apilados {
+  margin-bottom: 4px;
+}
+.detalle-sidebar hr.separador {
+  border: none;
+  border-top: 1px solid #F0D9D2;
+  margin: 14px 0 12px;
+}
+.detalle-principal {
+  flex: 1;
+  min-width: 0;
+}
+
+.simulador-compacto {
+  background-color: #FFF5F2;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.simulador-compacto .sim-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #4A2C2A;
+}
+.simulador-compacto .sim-fila span:first-child {
+  color: #8A6A66;
+}
+.simulador-compacto .sim-total {
+  border-top: 1px solid #E8D5CF;
+  margin-top: 4px;
+  padding-top: 6px;
+  font-weight: 600;
+}
+.simulador-compacto .sim-total span:last-child {
+  color: #E8765C;
+}
+
+.tabs-detalle {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #E8D5CF;
+  margin-bottom: 14px;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  color: #8A6A66;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab-btn.activo {
+  color: #E8765C;
+  border-bottom-color: #E8765C;
+  font-weight: 600;
+}
+
+.stat-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 12px;
+  border: 1px solid #E8D5CF;
+  border-radius: 20px;
+  padding: 4px 12px;
+  background: #FFFCFA;
+  white-space: nowrap;
+}
+.stat-chip strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .detalle-dos-columnas {
+    flex-direction: column;
+  }
+  .detalle-sidebar {
+    width: 100%;
+  }
+  .cabecera-lista select.filtro-rubro {
+    max-width: none;
+  }
 }

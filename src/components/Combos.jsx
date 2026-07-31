@@ -107,22 +107,21 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   }
 
   return (
-    <div className="modulo">
-      <h2>Combos</h2>
-
-      <div className="acciones-superiores">
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Combos</h2>
+        <span className="contador">{combosFiltrados.length}</span>
+        <div className="buscador-inline">
+          <input
+            type="text"
+            placeholder="🔎 Buscar combo..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
+        </div>
         <button className="btn-primario" onClick={iniciarNuevo}>
-          + Nuevo Combo
+          + Nuevo
         </button>
-      </div>
-
-      <div className="campo-buscador">
-        <input
-          type="text"
-          placeholder="🔎 Buscar combo..."
-          value={textoBusqueda}
-          onChange={(e) => setTextoBusqueda(e.target.value)}
-        />
       </div>
 
       {cargando && <p>Cargando...</p>}
@@ -130,7 +129,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
 
       {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th>ID</th>
@@ -156,12 +155,8 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
                     {c.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(c.fecha_fin)}
                   </td>
                   <td>
-                    <button className="btn-link" onClick={() => abrirCombo(c)}>
-                      Ver / Editar
-                    </button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminarCombo(c.id_combo)}>
-                      Eliminar
-                    </button>
+                    <button className="icono-accion" title="Ver / Editar" onClick={() => abrirCombo(c)}>✏️</button>
+                    <button className="icono-accion" title="Eliminar" onClick={() => eliminarCombo(c.id_combo)}>🗑️</button>
                   </td>
                 </tr>
               ))}
@@ -203,6 +198,7 @@ function DetalleCombo({ combo, onVolver }) {
   const [textoBuscarProducto, setTextoBuscarProducto] = useState('')
   const [productoParaAgregar, setProductoParaAgregar] = useState(null)
   const [cantidadProducto, setCantidadProducto] = useState('1')
+  const [pestana, setPestana] = useState('productos')
 
   useEffect(() => {
     cargarCombosExistentes()
@@ -552,258 +548,270 @@ function DetalleCombo({ combo, onVolver }) {
   }
 
   return (
-    <div className="modulo">
-      <button className="btn-volver" onClick={onVolver}>
-        ← Volver a Combos
-      </button>
-
-      <h2>{combo.id_combo ? 'Editar Combo' : 'Nuevo Combo'}</h2>
-
-      <div className="subseccion">
-        <h3>Datos generales</h3>
-        <div className="formulario formulario-costos">
-          <div className="campo" style={{ flex: 2 }}>
-            <label>Descripción</label>
-            <input
-              type="text"
-              placeholder="Ej: Caja Día del Padre"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-            />
-          </div>
-          <div className="campo">
-            <label>Fecha inicio</label>
-            <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
-          </div>
-          <div className="campo">
-            <label>Fecha fin</label>
-            <input
-              type="date"
-              value={fechaFin === '3000-12-31' ? '' : fechaFin}
-              placeholder="Indefinida"
-              onChange={(e) => setFechaFin(e.target.value || '3000-12-31')}
-            />
-          </div>
-          <div className="campo">
-            <label>Precio del combo</label>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={precio}
-              onChange={(e) => setPrecio(e.target.value)}
-            />
-          </div>
-          <div className="campo-acciones">
-            {combo.id_combo && (
-              <button className="btn-secundario" type="button" onClick={usarPrecioSugerido}>
-                Usar precio sugerido (${formatearMoneda(precioSugerido)})
-              </button>
-            )}
-            <button className="btn-primario" onClick={handleGuardarCombo} disabled={guardando}>
-              {guardando ? 'Guardando...' : 'Guardar combo'}
-            </button>
-          </div>
-        </div>
+    <div className="modulo modulo-compacto">
+      <div className="detalle-cabecera-compacta">
+        <button className="btn-volver" onClick={onVolver} style={{ marginBottom: 0 }}>← Volver a Combos</button>
+        <h2>{combo.id_combo ? (descripcion || 'Editar Combo') : 'Nuevo Combo'}</h2>
+        {combo.id_combo && <span className="id-badge">ID {combo.id_combo}</span>}
       </div>
 
-      <div className="subseccion">
-        <h3>Publicación web</h3>
-        <div className="ayuda-vigencia">
-          Controla cómo aparece este combo en gimeburellopasteleria.com.ar. El precio publicado es el precio
-          del combo mientras esté dentro de su vigencia; fuera de vigencia la web muestra “Consultar”.
-        </div>
-
-        <div className="formulario formulario-costos">
-          <div className="campo" style={{ flex: 2 }}>
-            <label>Rubro</label>
-            <select value={idSeccion} onChange={(e) => setIdSeccion(e.target.value)}>
-              <option value="">— Sin rubro (no se publica) —</option>
-              {secciones.map((s) => (
-                <option key={s.id_seccion} value={s.id_seccion}>
-                  {s.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="campo" style={{ flex: 2 }}>
-            <label>Frase de venta</label>
-            <input
-              type="text"
-              placeholder="Ej: Todo listo para regalar."
-              value={fraseVenta}
-              onChange={(e) => setFraseVenta(e.target.value)}
-            />
-          </div>
-
-          <div className="campo">
-            <label>Orden</label>
-            <input
-              type="number"
-              placeholder="1"
-              value={ordenWeb}
-              onChange={(e) => setOrdenWeb(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="formulario formulario-costos">
-          <div className="campo" style={{ flex: 3 }}>
-            <label>Texto web</label>
-            <textarea
-              rows={3}
-              placeholder="Descripción que se muestra en la tarjeta del combo."
-              value={textoWeb}
-              onChange={(e) => setTextoWeb(e.target.value)}
-              style={{
-                padding: '10px 12px',
-                border: '1px solid #E8D5CF',
-                borderRadius: 8,
-                fontFamily: "'Poppins', sans-serif",
-                fontSize: 14,
-                width: '100%',
-                resize: 'vertical',
-              }}
-            />
-          </div>
-
-          <div className="campo" style={{ flex: 2 }}>
-            <label>Imagen</label>
-            {combo.id_combo ? (
-              <>
-                <input
-                  type="file"
-                  accept="image/*"
-                  disabled={subiendoImagen}
-                  onChange={(e) => subirImagen(e.target.files?.[0])}
-                />
-                {subiendoImagen && (
-                  <span style={{ color: '#8A6A66', fontSize: 13 }}>Subiendo imagen...</span>
-                )}
-                {imagenUrl && (
-                  <img
-                    src={imagenUrl}
-                    alt="Imagen del combo"
-                    style={{ marginTop: 8, width: 120, height: 90, objectFit: 'cover', borderRadius: 8 }}
-                  />
-                )}
-              </>
-            ) : (
-              <span style={{ color: '#8A6A66', fontSize: 13 }}>
-                Guardá el combo para poder subir una imagen.
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="formulario formulario-costos">
-          <div className="campo">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={visibleWeb}
-                onChange={(e) => setVisibleWeb(e.target.checked)}
-                style={{ width: 'auto' }}
-              />
-              Publicar en la web
-            </label>
-          </div>
-
-          <div className="campo-acciones">
-            <button className="btn-primario" onClick={handleGuardarCombo} disabled={guardando}>
-              {guardando ? 'Guardando...' : 'Guardar publicación web'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {combo.id_combo && (
-        <div className="subseccion">
-          <h3>Productos incluidos</h3>
-
-          <div className="formulario">
-            <div style={{ position: 'relative', flex: 2 }}>
+      <div className="detalle-dos-columnas">
+        <aside className="detalle-sidebar">
+          <div className="rotulo-grupo">Datos generales</div>
+          <div className="campos-apilados">
+            <div className="campo">
+              <label>Descripción</label>
               <input
                 type="text"
-                placeholder="🔎 Buscar producto..."
-                value={textoBuscarProducto}
-                onChange={(e) => {
-                  setTextoBuscarProducto(e.target.value)
-                  setProductoParaAgregar(null)
-                }}
+                placeholder="Ej: Caja Día del Padre"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
               />
-              {textoBuscarProducto && !productoParaAgregar && productosFiltrados.length > 0 && (
-                <div className="dropdown-resultados">
-                  {productosFiltrados.map((p) => (
-                    <div key={p.id_producto} className="dropdown-item" onClick={() => seleccionarProducto(p)}>
-                      {p.descripcion}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-            <input
-              type="number"
-              step="1"
-              placeholder="Cantidad"
-              value={cantidadProducto}
-              onChange={(e) => setCantidadProducto(e.target.value)}
-              style={{ maxWidth: '120px' }}
-            />
-            <button className="btn-primario" onClick={agregarProducto}>
-              + Agregar
+            <div className="campo">
+              <label>Fecha inicio</label>
+              <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+            </div>
+            <div className="campo">
+              <label>Fecha fin</label>
+              <input
+                type="date"
+                value={fechaFin === '3000-12-31' ? '' : fechaFin}
+                placeholder="Indefinida"
+                onChange={(e) => setFechaFin(e.target.value || '3000-12-31')}
+              />
+            </div>
+            <div className="campo">
+              <label>Precio del combo</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={precio}
+                onChange={(e) => setPrecio(e.target.value)}
+              />
+            </div>
+            {combo.id_combo && (
+              <button className="btn-secundario" type="button" onClick={usarPrecioSugerido} style={{ width: '100%' }}>
+                Usar sugerido (${formatearMoneda(precioSugerido)})
+              </button>
+            )}
+            <button className="btn-primario" onClick={handleGuardarCombo} disabled={guardando} style={{ width: '100%' }}>
+              {guardando ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </aside>
+
+        <div className="detalle-principal">
+          <div className="tabs-detalle">
+            <button className={pestana === 'productos' ? 'tab-btn activo' : 'tab-btn'} onClick={() => setPestana('productos')}>
+              Productos incluidos
+            </button>
+            <button className={pestana === 'web' ? 'tab-btn activo' : 'tab-btn'} onClick={() => setPestana('web')}>
+              Publicación web
             </button>
           </div>
 
-          {cargandoProductos && <p>Cargando productos del combo...</p>}
+          {pestana === 'productos' && (
+            !combo.id_combo ? (
+              <p style={{ color: '#8A6A66', fontSize: 13 }}>Guardá primero los datos generales para poder agregar productos.</p>
+            ) : (
+              <>
+                <div className="formulario">
+                  <div style={{ position: 'relative', flex: 2 }}>
+                    <input
+                      type="text"
+                      placeholder="🔎 Buscar producto..."
+                      value={textoBuscarProducto}
+                      onChange={(e) => {
+                        setTextoBuscarProducto(e.target.value)
+                        setProductoParaAgregar(null)
+                      }}
+                    />
+                    {textoBuscarProducto && !productoParaAgregar && productosFiltrados.length > 0 && (
+                      <div className="dropdown-resultados">
+                        {productosFiltrados.map((p) => (
+                          <div key={p.id_producto} className="dropdown-item" onClick={() => seleccionarProducto(p)}>
+                            {p.descripcion}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    step="1"
+                    placeholder="Cantidad"
+                    value={cantidadProducto}
+                    onChange={(e) => setCantidadProducto(e.target.value)}
+                    style={{ maxWidth: '120px' }}
+                  />
+                  <button className="btn-primario" onClick={agregarProducto}>
+                    + Agregar
+                  </button>
+                </div>
 
-          {!cargandoProductos && (
-            <div className="tabla-wrapper">
-              <table className="tabla">
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Cantidad</th>
-                    <th>Costo receta (u.)</th>
-                    <th>Precio teórico</th>
-                    <th>Precio venta</th>
-                    <th>Subtotal</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {productosCombo.length === 0 && (
-                    <tr>
-                      <td colSpan="7">Todavía no agregaste productos a este combo.</td>
-                    </tr>
-                  )}
-                  {productosCombo.map((pc) => (
-                    <tr key={pc.id_producto}>
-                      <td>{pc.productos?.descripcion}</td>
-                      <td>{pc.cantidad}</td>
-                      <td>${formatearMoneda(pc.costo_receta)}</td>
-                      <td>${formatearMoneda(pc.precio_teorico)}</td>
-                      <td>${formatearMoneda(pc.precio_venta)}</td>
-                      <td>${formatearMoneda((pc.precio_venta || 0) * parseFloat(pc.cantidad))}</td>
-                      <td>
-                        <button className="btn-link btn-eliminar" onClick={() => quitarProducto(pc.id_producto)}>
-                          Quitar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                {cargandoProductos && <p>Cargando productos del combo...</p>}
+
+                {!cargandoProductos && (
+                  <div className="tabla-wrapper">
+                    <table className="tabla tabla-compacta">
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Cantidad</th>
+                          <th>Costo receta (u.)</th>
+                          <th>Precio teórico</th>
+                          <th>Precio venta</th>
+                          <th>Subtotal</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {productosCombo.length === 0 && (
+                          <tr>
+                            <td colSpan="7">Todavía no agregaste productos a este combo.</td>
+                          </tr>
+                        )}
+                        {productosCombo.map((pc) => (
+                          <tr key={pc.id_producto}>
+                            <td>{pc.productos?.descripcion}</td>
+                            <td>{pc.cantidad}</td>
+                            <td>${formatearMoneda(pc.costo_receta)}</td>
+                            <td>${formatearMoneda(pc.precio_teorico)}</td>
+                            <td>${formatearMoneda(pc.precio_venta)}</td>
+                            <td>${formatearMoneda((pc.precio_venta || 0) * parseFloat(pc.cantidad))}</td>
+                            <td>
+                              <button className="icono-accion" title="Quitar" onClick={() => quitarProducto(pc.id_producto)}>🗑️</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="costo-total">
+                  💰 Suma de precios de venta (sugerencia): <strong>${formatearMoneda(precioSugerido)}</strong>
+                  &nbsp;|&nbsp; Precio actual del combo: <strong>${formatearMoneda(parseFloat(precio) || 0)}</strong>
+                </div>
+              </>
+            )
           )}
 
-          <div className="costo-total">
-            💰 Suma de precios de venta (sugerencia): <strong>${formatearMoneda(precioSugerido)}</strong>
-            &nbsp;|&nbsp; Precio actual del combo: <strong>${formatearMoneda(parseFloat(precio) || 0)}</strong>
-          </div>
+          {pestana === 'web' && (
+            <>
+              <div className="ayuda-vigencia">
+                Controla cómo aparece este combo en gimeburellopasteleria.com.ar. El precio publicado es el precio
+                del combo mientras esté dentro de su vigencia; fuera de vigencia la web muestra "Consultar".
+              </div>
+
+              <div className="formulario formulario-costos">
+                <div className="campo" style={{ flex: 2 }}>
+                  <label>Rubro</label>
+                  <select value={idSeccion} onChange={(e) => setIdSeccion(e.target.value)}>
+                    <option value="">— Sin rubro (no se publica) —</option>
+                    {secciones.map((s) => (
+                      <option key={s.id_seccion} value={s.id_seccion}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="campo" style={{ flex: 2 }}>
+                  <label>Frase de venta</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Todo listo para regalar."
+                    value={fraseVenta}
+                    onChange={(e) => setFraseVenta(e.target.value)}
+                  />
+                </div>
+
+                <div className="campo">
+                  <label>Orden</label>
+                  <input
+                    type="number"
+                    placeholder="1"
+                    value={ordenWeb}
+                    onChange={(e) => setOrdenWeb(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="formulario formulario-costos">
+                <div className="campo" style={{ flex: 3 }}>
+                  <label>Texto web</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Descripción que se muestra en la tarjeta del combo."
+                    value={textoWeb}
+                    onChange={(e) => setTextoWeb(e.target.value)}
+                    style={{
+                      padding: '10px 12px',
+                      border: '1px solid #E8D5CF',
+                      borderRadius: 8,
+                      fontFamily: "'Poppins', sans-serif",
+                      fontSize: 14,
+                      width: '100%',
+                      resize: 'vertical',
+                    }}
+                  />
+                </div>
+
+                <div className="campo" style={{ flex: 2 }}>
+                  <label>Imagen</label>
+                  {combo.id_combo ? (
+                    <>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={subiendoImagen}
+                        onChange={(e) => subirImagen(e.target.files?.[0])}
+                      />
+                      {subiendoImagen && (
+                        <span style={{ color: '#8A6A66', fontSize: 13 }}>Subiendo imagen...</span>
+                      )}
+                      {imagenUrl && (
+                        <img
+                          src={imagenUrl}
+                          alt="Imagen del combo"
+                          style={{ marginTop: 8, width: 120, height: 90, objectFit: 'cover', borderRadius: 8 }}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ color: '#8A6A66', fontSize: 13 }}>
+                      Guardá el combo para poder subir una imagen.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="formulario formulario-costos">
+                <div className="campo">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={visibleWeb}
+                      onChange={(e) => setVisibleWeb(e.target.checked)}
+                      style={{ width: 'auto' }}
+                    />
+                    Publicar en la web
+                  </label>
+                </div>
+
+                <div className="campo-acciones">
+                  <button className="btn-primario" onClick={handleGuardarCombo} disabled={guardando}>
+                    {guardando ? 'Guardando...' : 'Guardar publicación web'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

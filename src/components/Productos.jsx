@@ -12,10 +12,22 @@ function Productos() {
   const [productoActual, setProductoActual] = useState(null)
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
+  const [secciones, setSecciones] = useState([])
+  const [filtroRubro, setFiltroRubro] = useState('todos')
 
   useEffect(() => {
     cargarProductos()
+    cargarSecciones()
   }, [])
+
+  async function cargarSecciones() {
+    const { data } = await supabase
+      .from('secciones')
+      .select('id_seccion, nombre')
+      .eq('nivel', 'rubro')
+      .order('orden')
+    setSecciones(data || [])
+  }
 
   function normalizar(texto) {
     return texto
@@ -75,9 +87,9 @@ function Productos() {
     }
   }
 
-  const productosFiltrados = textoBusqueda.trim()
-    ? productos.filter((p) => normalizar(p.descripcion).includes(normalizar(textoBusqueda)))
-    : productos
+  const productosFiltrados = productos
+    .filter((p) => (textoBusqueda.trim() ? normalizar(p.descripcion).includes(normalizar(textoBusqueda)) : true))
+    .filter((p) => (filtroRubro === 'todos' ? true : String(p.id_seccion || '') === filtroRubro))
 
   if (vista === 'detalle') {
     return (
@@ -92,22 +104,27 @@ function Productos() {
   }
 
   return (
-    <div className="modulo">
-      <h2>Productos</h2>
-
-      <div className="acciones-superiores">
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Productos</h2>
+        <span className="contador">{productosFiltrados.length}</span>
+        <div className="buscador-inline">
+          <input
+            type="text"
+            placeholder="🔎 Buscar producto..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
+        </div>
+        <select className="filtro-rubro" value={filtroRubro} onChange={(e) => setFiltroRubro(e.target.value)}>
+          <option value="todos">Rubro: todos</option>
+          {secciones.map((s) => (
+            <option key={s.id_seccion} value={String(s.id_seccion)}>{s.nombre}</option>
+          ))}
+        </select>
         <button className="btn-primario" onClick={iniciarNuevo}>
-          + Nuevo Producto
+          + Nuevo
         </button>
-      </div>
-
-      <div className="campo-buscador">
-        <input
-          type="text"
-          placeholder="🔎 Buscar producto..."
-          value={textoBusqueda}
-          onChange={(e) => setTextoBusqueda(e.target.value)}
-        />
       </div>
 
       {cargando && <p>Cargando...</p>}
@@ -115,20 +132,21 @@ function Productos() {
 
       {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Descripción</th>
                 <th>Receta</th>
-                <th>Coef. Ganancia</th>
+                <th>Coef.</th>
+                <th title="Publicado en la web">Web</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {productosFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan="5">No hay productos registrados.</td>
+                  <td colSpan="6">No hay productos registrados.</td>
                 </tr>
               )}
               {productosFiltrados.map((p) => (
@@ -137,13 +155,12 @@ function Productos() {
                   <td>{p.descripcion}</td>
                   <td>{p.recetas?.descripcion || '—'}</td>
                   <td>{p.coeficiente_ganancia}</td>
+                  <td style={{ textAlign: 'center' }} title={p.visible_web ? 'Publicado en la web' : 'No publicado'}>
+                    {p.visible_web ? '👁️' : '—'}
+                  </td>
                   <td>
-                    <button className="btn-link" onClick={() => abrirProducto(p)}>
-                      Ver / Editar
-                    </button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminarProducto(p.id_producto)}>
-                      Eliminar
-                    </button>
+                    <button className="icono-accion" title="Ver / Editar" onClick={() => abrirProducto(p)}>✏️</button>
+                    <button className="icono-accion" title="Eliminar" onClick={() => eliminarProducto(p.id_producto)}>🗑️</button>
                   </td>
                 </tr>
               ))}
@@ -192,6 +209,7 @@ function DetalleProducto({ producto, onVolver }) {
   const [guardandoPrecio, setGuardandoPrecio] = useState(false)
   const [editandoPrecioId, setEditandoPrecioId] = useState(null)
   const refFechaInicioPrecio = useRef(null)
+  const [pestana, setPestana] = useState('historial')
 
   useEffect(() => {
     cargarRecetas()
@@ -552,319 +570,315 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     Math.abs(parseFloat(precioVigenteHoy.precio_venta) - precioTeoricoSimulado) > 0.5
 
   return (
-    <div className="modulo">
-      <button className="btn-volver" onClick={onVolver}>
-        ← Volver a Productos
-      </button>
-
-      <h2>{producto.id_producto ? 'Editar Producto' : 'Nuevo Producto'}</h2>
-
-      <div className="subseccion">
-        <h3>Datos generales</h3>
-        <div className="formulario formulario-costos">
-          <div className="campo" style={{ flex: 2 }}>
-            <label>Descripción</label>
-            <input
-              type="text"
-              placeholder="Ej: Torta de Chocolate 1kg"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-            />
-          </div>
-
-          <div className="campo" style={{ flex: 2, position: 'relative' }}>
-            <label>Receta</label>
-            <input
-              type="text"
-              placeholder="🔎 Buscar receta..."
-              value={textoBuscarReceta}
-              onChange={(e) => {
-                setTextoBuscarReceta(e.target.value)
-                setRecetaSeleccionada(null)
-                setIdReceta(null)
-              }}
-            />
-            {textoBuscarReceta && !recetaSeleccionada && recetasFiltradas.length > 0 && (
-              <div className="dropdown-resultados">
-                {recetasFiltradas.map((r) => (
-                  <div key={r.id_receta} className="dropdown-item" onClick={() => seleccionarReceta(r)}>
-                    {r.descripcion}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="campo">
-            <label>Coeficiente de ganancia</label>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Ej: 1.30"
-              value={coeficiente}
-              onChange={(e) => setCoeficiente(e.target.value)}
-            />
-          </div>
-
-          <div className="campo-acciones">
-            <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardandoCabecera}>
-              {guardandoCabecera ? 'Guardando...' : 'Guardar datos generales'}
-            </button>
-          </div>
-        </div>
+    <div className="modulo modulo-compacto">
+      <div className="detalle-cabecera-compacta">
+        <button className="btn-volver" onClick={onVolver} style={{ marginBottom: 0 }}>← Volver a Productos</button>
+        <h2>{descripcion || (producto.id_producto ? 'Editar Producto' : 'Nuevo Producto')}</h2>
+        {producto.id_producto && <span className="id-badge">ID {producto.id_producto}</span>}
       </div>
 
-      <div className="subseccion">
-        <h3>Publicación web</h3>
-        <div className="ayuda-vigencia">
-          Controla cómo aparece este producto en gimeburellopasteleria.com.ar. El precio publicado es el
-          precio de venta vigente; si no hay ninguno vigente, la web muestra “Consultar”.
-        </div>
+      <div className="detalle-dos-columnas">
+        {/* ===== COLUMNA IZQUIERDA: datos generales + simulador ===== */}
+        <aside className="detalle-sidebar">
+          <div className="rotulo-grupo">Datos generales</div>
+          <div className="campos-apilados">
+            <div className="campo">
+              <label>Descripción</label>
+              <input
+                type="text"
+                placeholder="Ej: Torta de Chocolate 1kg"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+              />
+            </div>
 
-        <div className="formulario formulario-costos">
-          <div className="campo" style={{ flex: 2 }}>
-            <label>Rubro</label>
-            <select value={idSeccion} onChange={(e) => setIdSeccion(e.target.value)}>
-              <option value="">— Sin rubro (no se publica) —</option>
-              {secciones.map((s) => (
-                <option key={s.id_seccion} value={s.id_seccion}>
-                  {s.nombre}
-                </option>
-              ))}
-            </select>
+            <div className="campo" style={{ position: 'relative' }}>
+              <label>Receta</label>
+              <input
+                type="text"
+                placeholder="🔎 Buscar receta..."
+                value={textoBuscarReceta}
+                onChange={(e) => {
+                  setTextoBuscarReceta(e.target.value)
+                  setRecetaSeleccionada(null)
+                  setIdReceta(null)
+                }}
+              />
+              {textoBuscarReceta && !recetaSeleccionada && recetasFiltradas.length > 0 && (
+                <div className="dropdown-resultados">
+                  {recetasFiltradas.map((r) => (
+                    <div key={r.id_receta} className="dropdown-item" onClick={() => seleccionarReceta(r)}>
+                      {r.descripcion}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="campo">
+              <label>Coeficiente de ganancia</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Ej: 1.30"
+                value={coeficiente}
+                onChange={(e) => setCoeficiente(e.target.value)}
+              />
+            </div>
+
+            <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardandoCabecera} style={{ width: '100%' }}>
+              {guardandoCabecera ? 'Guardando...' : 'Guardar'}
+            </button>
           </div>
 
-          <div className="campo" style={{ flex: 2 }}>
-            <label>Frase de venta</label>
-            <input
-              type="text"
-              placeholder="Ej: El clásico que nunca falla."
-              value={fraseVenta}
-              onChange={(e) => setFraseVenta(e.target.value)}
-            />
+          {idReceta && (
+            <>
+              <hr className="separador" />
+              <div className="rotulo-grupo">Simulador de precio</div>
+              {calculandoCosto && <p style={{ fontSize: 12.5, color: '#8A6A66' }}>Calculando...</p>}
+              {!calculandoCosto && costoReceta !== null && (
+                <div className="simulador-compacto">
+                  <div className="sim-fila"><span>Costo receta</span><span>${formatearMoneda(costoReceta)}</span></div>
+                  <div className="sim-fila"><span>Costo unitario</span><span>${formatearMoneda(costoPorUnidad)}</span></div>
+                  <div className="sim-fila"><span>Coeficiente</span><span>x{parseFloat(coeficiente || 0).toFixed(2)}</span></div>
+                  <div className="sim-fila sim-total"><span>Precio teórico</span><span>${formatearMoneda(precioTeoricoSimulado)}</span></div>
+                </div>
+              )}
+              {!calculandoCosto && costoReceta === null && (
+                <p className="mensaje-error" style={{ fontSize: 12.5 }}>No se pudo calcular el costo (verificá costos vigentes de los ingredientes).</p>
+              )}
+              {precioDesactualizado && (
+                <div className="aviso-similar" style={{ marginTop: 8, fontSize: 12 }}>
+                  El precio vigente (${formatearMoneda(precioVigenteHoy.precio_venta)}) difiere del teórico (${formatearMoneda(precioTeoricoSimulado)}).
+                </div>
+              )}
+            </>
+          )}
+        </aside>
+
+        {/* ===== COLUMNA DERECHA: solapas ===== */}
+        <div className="detalle-principal">
+          <div className="tabs-detalle">
+            <button className={pestana === 'historial' ? 'tab-btn activo' : 'tab-btn'} onClick={() => setPestana('historial')}>
+              Historial de precios
+            </button>
+            <button className={pestana === 'web' ? 'tab-btn activo' : 'tab-btn'} onClick={() => setPestana('web')}>
+              Publicación web
+            </button>
           </div>
 
-          <div className="campo">
-            <label>Orden</label>
-            <input
-              type="number"
-              placeholder="1"
-              value={ordenWeb}
-              onChange={(e) => setOrdenWeb(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="formulario formulario-costos">
-          <div className="campo" style={{ flex: 3 }}>
-            <label>Texto web</label>
-            <textarea
-              rows={3}
-              placeholder="Descripción que se muestra en la tarjeta del producto."
-              value={textoWeb}
-              onChange={(e) => setTextoWeb(e.target.value)}
-              style={{
-                padding: '10px 12px',
-                border: '1px solid #E8D5CF',
-                borderRadius: 8,
-                fontFamily: "'Poppins', sans-serif",
-                fontSize: 14,
-                width: '100%',
-                resize: 'vertical',
-              }}
-            />
-          </div>
-
-          <div className="campo" style={{ flex: 2 }}>
-            <label>Imagen</label>
-            {producto.id_producto ? (
+          {pestana === 'historial' && (
+            !producto.id_producto ? (
+              <p style={{ color: '#8A6A66', fontSize: 13 }}>Guardá primero los datos generales para poder cargar precios.</p>
+            ) : (
               <>
-                <input
-                  type="file"
-                  accept="image/*"
-                  disabled={subiendoImagen}
-                  onChange={(e) => subirImagen(e.target.files?.[0])}
-                />
-                {subiendoImagen && (
-                  <span style={{ color: '#8A6A66', fontSize: 13 }}>Subiendo imagen...</span>
-                )}
-                {imagenUrl && (
-                  <img
-                    src={imagenUrl}
-                    alt="Imagen del producto"
-                    style={{ marginTop: 8, width: 120, height: 90, objectFit: 'cover', borderRadius: 8 }}
-                  />
+                <div className="formulario formulario-costos">
+                  <div className="campo">
+                    <label>Fecha inicio</label>
+                    <input
+                      type="date"
+                      ref={refFechaInicioPrecio}
+                      value={fechaInicioPrecio}
+                      onChange={(e) => setFechaInicioPrecio(e.target.value)}
+                    />
+                  </div>
+                  <div className="campo">
+                    <label>Fecha fin</label>
+                    <input
+                      type="date"
+                      value={fechaFinPrecio === '3000-12-31' ? '' : fechaFinPrecio}
+                      placeholder="Indefinida"
+                      onChange={(e) => setFechaFinPrecio(e.target.value || '3000-12-31')}
+                    />
+                  </div>
+                  <div className="campo">
+                    <label>Precio de venta</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={precioVentaManual}
+                      onChange={(e) => setPrecioVentaManual(e.target.value)}
+                    />
+                  </div>
+                  <div className="campo">
+                    <label style={{ color: '#5B21B6' }}>Precio mayorista *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={precioMayoristaManual}
+                      onChange={(e) => setPrecioMayoristaManual(e.target.value)}
+                      style={{ background: '#fff', colorScheme: 'light', borderColor: '#C4B5FD' }}
+                    />
+                  </div>
+                  <div className="campo-acciones">
+                    <button className="btn-secundario" type="button" onClick={iniciarNuevoPrecio}>
+                      Usar precio sugerido
+                    </button>
+                    <button className="btn-primario" onClick={guardarPrecio} disabled={guardandoPrecio}>
+                      {guardandoPrecio ? 'Guardando...' : editandoPrecioId ? 'Actualizar' : 'Agregar precio'}
+                    </button>
+                  </div>
+                </div>
+
+                {cargandoPrecios && <p>Cargando historial...</p>}
+
+                {!cargandoPrecios && (
+                  <div className="tabla-wrapper">
+                    <table className="tabla tabla-compacta">
+                      <thead>
+                        <tr>
+                          <th>Desde</th>
+                          <th>Hasta</th>
+                          <th>Venta</th>
+                          <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }}>Mayorista</th>
+                          <th>Teórico</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {precios.length === 0 && (
+                          <tr>
+                            <td colSpan="5">No hay precios registrados.</td>
+                          </tr>
+                        )}
+                        {precios.map((p) => (
+                          <tr key={p.id_precio}>
+                            <td>{formatearFecha(p.fecha_inicio)}</td>
+                            <td>{p.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(p.fecha_fin)}</td>
+                            <td>${formatearMoneda(p.precio_venta)}</td>
+                            <td style={{ color: '#5B21B6', fontWeight: 600 }}>
+                              {p.precio_mayorista != null ? `$${formatearMoneda(p.precio_mayorista)}` : '—'}
+                            </td>
+                            <td>{p.precio_teorico ? `$${formatearMoneda(p.precio_teorico)}` : '—'}</td>
+                            <td>
+                              <button className="icono-accion" title="Editar" onClick={() => iniciarEdicionPrecio(p)}>✏️</button>
+                              <button className="icono-accion" title="Eliminar" onClick={() => eliminarPrecio(p.id_precio)}>🗑️</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </>
-            ) : (
-              <span style={{ color: '#8A6A66', fontSize: 13 }}>
-                Guardá el producto para poder subir una imagen.
-              </span>
-            )}
-          </div>
-        </div>
+            )
+          )}
 
-        <div className="formulario formulario-costos">
-          <div className="campo">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={visibleWeb}
-                onChange={(e) => setVisibleWeb(e.target.checked)}
-                style={{ width: 'auto' }}
-              />
-              Publicar en la web
-            </label>
-          </div>
+          {pestana === 'web' && (
+            <>
+              <div className="ayuda-vigencia">
+                Controla cómo aparece este producto en gimeburellopasteleria.com.ar. El precio publicado es el
+                precio de venta vigente; si no hay ninguno vigente, la web muestra "Consultar".
+              </div>
 
-          <div className="campo-acciones">
-            <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardandoCabecera}>
-              {guardandoCabecera ? 'Guardando...' : 'Guardar publicación web'}
-            </button>
-          </div>
+              <div className="formulario formulario-costos">
+                <div className="campo" style={{ flex: 2 }}>
+                  <label>Rubro</label>
+                  <select value={idSeccion} onChange={(e) => setIdSeccion(e.target.value)}>
+                    <option value="">— Sin rubro (no se publica) —</option>
+                    {secciones.map((s) => (
+                      <option key={s.id_seccion} value={s.id_seccion}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="campo" style={{ flex: 2 }}>
+                  <label>Frase de venta</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: El clásico que nunca falla."
+                    value={fraseVenta}
+                    onChange={(e) => setFraseVenta(e.target.value)}
+                  />
+                </div>
+
+                <div className="campo">
+                  <label>Orden</label>
+                  <input
+                    type="number"
+                    placeholder="1"
+                    value={ordenWeb}
+                    onChange={(e) => setOrdenWeb(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="formulario formulario-costos">
+                <div className="campo" style={{ flex: 3 }}>
+                  <label>Texto web</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Descripción que se muestra en la tarjeta del producto."
+                    value={textoWeb}
+                    onChange={(e) => setTextoWeb(e.target.value)}
+                    style={{
+                      padding: '10px 12px',
+                      border: '1px solid #E8D5CF',
+                      borderRadius: 8,
+                      fontFamily: "'Poppins', sans-serif",
+                      fontSize: 14,
+                      width: '100%',
+                      resize: 'vertical',
+                    }}
+                  />
+                </div>
+
+                <div className="campo" style={{ flex: 2 }}>
+                  <label>Imagen</label>
+                  {producto.id_producto ? (
+                    <>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={subiendoImagen}
+                        onChange={(e) => subirImagen(e.target.files?.[0])}
+                      />
+                      {subiendoImagen && (
+                        <span style={{ color: '#8A6A66', fontSize: 13 }}>Subiendo imagen...</span>
+                      )}
+                      {imagenUrl && (
+                        <img
+                          src={imagenUrl}
+                          alt="Imagen del producto"
+                          style={{ marginTop: 8, width: 120, height: 90, objectFit: 'cover', borderRadius: 8 }}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ color: '#8A6A66', fontSize: 13 }}>
+                      Guardá el producto para poder subir una imagen.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="formulario formulario-costos">
+                <div className="campo">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={visibleWeb}
+                      onChange={(e) => setVisibleWeb(e.target.checked)}
+                      style={{ width: 'auto' }}
+                    />
+                    Publicar en la web
+                  </label>
+                </div>
+
+                <div className="campo-acciones">
+                  <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardandoCabecera}>
+                    {guardandoCabecera ? 'Guardando...' : 'Guardar publicación web'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
-
-      {idReceta && (
-        <div className="subseccion">
-          <h3>Simulador de precio</h3>
-
-          {calculandoCosto && <p>Calculando costo de la receta...</p>}
-
-          {!calculandoCosto && costoReceta !== null && (
-            <div className="simulador-precio">
-              <div className="simulador-item">
-                <span>Costo total de receta</span>
-                <strong>${formatearMoneda(costoReceta)}</strong>
-              </div>
-              <div className="simulador-item">
-                <span>Costo por unidad de producto</span>
-                <strong>${formatearMoneda(costoPorUnidad)}</strong>
-              </div>
-              <div className="simulador-item">
-                <span>Coeficiente de ganancia</span>
-                <strong>x{parseFloat(coeficiente || 0).toFixed(2)}</strong>
-              </div>
-              <div className="simulador-item simulador-resultado">
-                <span>Precio teórico sugerido</span>
-                <strong>${formatearMoneda(precioTeoricoSimulado)}</strong>
-              </div>
-            </div>
-          )}
-
-          {!calculandoCosto && costoReceta === null && (
-            <p className="mensaje-error">No se pudo calcular el costo de esta receta (verificá que tenga ingredientes con costos vigentes).</p>
-          )}
-        </div>
-      )}
-
-      {producto.id_producto && (
-        <div className="subseccion">
-          <h3>Historial de precios</h3>
-
-          {precioDesactualizado && (
-            <div className="aviso-similar">
-              ⚠️ El precio vigente (${formatearMoneda(precioVigenteHoy.precio_venta)}) está desactualizado respecto
-              al precio teórico actual (${formatearMoneda(precioTeoricoSimulado)}). El costo de la receta puede haber cambiado.
-            </div>
-          )}
-
-          <div className="formulario formulario-costos">
-            <div className="campo">
-              <label>Fecha inicio</label>
-              <input
-                type="date"
-                ref={refFechaInicioPrecio}
-                value={fechaInicioPrecio}
-                onChange={(e) => setFechaInicioPrecio(e.target.value)}
-              />
-            </div>
-            <div className="campo">
-              <label>Fecha fin</label>
-              <input
-                type="date"
-                value={fechaFinPrecio === '3000-12-31' ? '' : fechaFinPrecio}
-                placeholder="Indefinida"
-                onChange={(e) => setFechaFinPrecio(e.target.value || '3000-12-31')}
-              />
-            </div>
-            <div className="campo">
-              <label>Precio de venta</label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={precioVentaManual}
-                onChange={(e) => setPrecioVentaManual(e.target.value)}
-              />
-            </div>
-            <div className="campo">
-              <label style={{ color: '#5B21B6' }}>Precio mayorista *</label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={precioMayoristaManual}
-                onChange={(e) => setPrecioMayoristaManual(e.target.value)}
-                style={{ background: '#fff', colorScheme: 'light', borderColor: '#C4B5FD' }}
-              />
-            </div>
-            <div className="campo-acciones">
-              <button className="btn-secundario" type="button" onClick={iniciarNuevoPrecio}>
-                Usar precio sugerido
-              </button>
-              <button className="btn-primario" onClick={guardarPrecio} disabled={guardandoPrecio}>
-                {guardandoPrecio ? 'Guardando...' : editandoPrecioId ? 'Actualizar' : 'Agregar precio'}
-              </button>
-            </div>
-          </div>
-
-          {cargandoPrecios && <p>Cargando historial...</p>}
-
-          {!cargandoPrecios && (
-            <div className="tabla-wrapper">
-              <table className="tabla">
-                <thead>
-                  <tr>
-                    <th>Desde</th>
-                    <th>Hasta</th>
-                    <th>Precio venta</th>
-                    <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }}>Mayorista</th>
-                    <th>Precio teórico (al momento)</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {precios.length === 0 && (
-                    <tr>
-                      <td colSpan="5">No hay precios registrados.</td>
-                    </tr>
-                  )}
-                  {precios.map((p) => (
-                    <tr key={p.id_precio}>
-                      <td>{formatearFecha(p.fecha_inicio)}</td>
-                      <td>{p.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(p.fecha_fin)}</td>
-                      <td>${formatearMoneda(p.precio_venta)}</td>
-                      <td style={{ color: '#5B21B6', fontWeight: 600 }}>
-                        {p.precio_mayorista != null ? `$${formatearMoneda(p.precio_mayorista)}` : '—'}
-                      </td>
-                      <td>{p.precio_teorico ? `$${formatearMoneda(p.precio_teorico)}` : '—'}</td>
-                      <td>
-                        <button className="btn-link" onClick={() => iniciarEdicionPrecio(p)}>
-                          Editar
-                        </button>
-                        <button className="btn-link btn-eliminar" onClick={() => eliminarPrecio(p.id_precio)}>
-                          Eliminar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

@@ -223,7 +223,7 @@ function Secciones() {
   }
 
   return (
-    <div className="modulo">
+    <div className="modulo modulo-compacto">
       <h2>Secciones del catálogo web</h2>
       <div className="ayuda-vigencia">
         La carátula es la portada de gimeburellopasteleria.com.ar. Los rubros son las tarjetas de la carta
@@ -403,7 +403,7 @@ function Secciones() {
             </form>
 
             <div className="tabla-wrapper">
-              <table className="tabla">
+              <table className="tabla tabla-compacta">
                 <thead>
                   <tr>
                     <th>Orden</th>
@@ -428,7 +428,7 @@ function Secciones() {
                           <img
                             src={r.imagen_url}
                             alt={r.nombre}
-                            style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 6 }}
+                            style={{ width: 40, height: 30, objectFit: 'cover', borderRadius: 6 }}
                           />
                         ) : (
                           '—'
@@ -437,17 +437,13 @@ function Secciones() {
                       <td>{r.nombre}</td>
                       <td>/{r.slug}</td>
                       <td>
-                        <button className="btn-link" onClick={() => alternarVisible(r)}>
-                          {r.visible ? 'Sí' : 'No'}
+                        <button className="icono-accion" title={r.visible ? 'Visible (click para ocultar)' : 'Oculto (click para mostrar)'} onClick={() => alternarVisible(r)}>
+                          {r.visible ? '👁️' : '—'}
                         </button>
                       </td>
                       <td>
-                        <button className="btn-link" onClick={() => iniciarEdicion(r)}>
-                          Editar
-                        </button>
-                        <button className="btn-link btn-eliminar" onClick={() => eliminarRubro(r.id_seccion)}>
-                          Eliminar
-                        </button>
+                        <button className="icono-accion" title="Editar" onClick={() => iniciarEdicion(r)}>✏️</button>
+                        <button className="icono-accion" title="Eliminar" onClick={() => eliminarRubro(r.id_seccion)}>🗑️</button>
                       </td>
                     </tr>
                   ))}

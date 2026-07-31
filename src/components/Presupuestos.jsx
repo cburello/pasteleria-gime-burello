@@ -98,29 +98,28 @@ function Presupuestos() {
   }
 
   return (
-    <div className="modulo">
-      <h2>Presupuestos</h2>
-
-      {!esMobile && (
-        <div className="acciones-superiores">
-          <button className="btn-primario" onClick={abrirNuevo}>+ Nuevo presupuesto</button>
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Presupuestos</h2>
+        <span className="contador">{filtrados.length}</span>
+        <div className="buscador-inline">
+          <input
+            type="text"
+            placeholder="🔎 Buscar por cliente..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
         </div>
-      )}
-
-      <div className="campo-buscador">
-        <input
-          type="text"
-          placeholder="🔎 Buscar por cliente..."
-          value={textoBusqueda}
-          onChange={(e) => setTextoBusqueda(e.target.value)}
-        />
+        {!esMobile && (
+          <button className="btn-primario" onClick={abrirNuevo}>+ Nuevo presupuesto</button>
+        )}
       </div>
 
       {cargando && <p>Cargando...</p>}
 
       {!cargando && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th>N°</th>
@@ -143,8 +142,8 @@ function Presupuestos() {
                   <td><BadgeEstado estado={p.estado} /></td>
                   <td>${formatearMoneda(p.total_estimado)}</td>
                   <td>
-                    <button className="btn-link" onClick={() => abrirExistente(p)}>
-                      {esMobile ? 'Abrir' : 'Ver / Editar'}
+                    <button className="icono-accion" title={esMobile ? 'Abrir' : 'Ver / Editar'} onClick={() => abrirExistente(p)}>
+                      {esMobile ? '📂' : '✏️'}
                     </button>
                   </td>
                 </tr>

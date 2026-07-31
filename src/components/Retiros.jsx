@@ -210,8 +210,19 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     : retiros
 
   return (
-    <div className="modulo">
-      <h2>Retiros</h2>
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Retiros</h2>
+        <span className="contador">{retirosFiltrados.length}</span>
+        <div className="buscador-inline">
+          <input
+            type="text"
+            placeholder="🔎 Buscar por observación..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
+        </div>
+      </div>
 
       <div className="formulario formulario-costos" style={{ marginBottom: '20px' }}>
         <div className="campo">
@@ -300,21 +311,12 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
         </div>
       </form>
 
-      <div className="campo-buscador">
-        <input
-          type="text"
-          placeholder="🔎 Buscar por observación..."
-          value={textoBusqueda}
-          onChange={(e) => setTextoBusqueda(e.target.value)}
-        />
-      </div>
-
       {cargando && <p>Cargando...</p>}
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th>Fecha</th>
@@ -339,12 +341,8 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
                   <td>{r.destino?.descripcion || r.id_medio_pago_destino}</td>
                   <td>{r.observaciones || '—'}</td>
                   <td>
-                    <button className="btn-link" onClick={() => iniciarEdicion(r)}>
-                      Editar
-                    </button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminar(r.id_retiro)}>
-                      Eliminar
-                    </button>
+                    <button className="icono-accion" title="Editar" onClick={() => iniciarEdicion(r)}>✏️</button>
+                    <button className="icono-accion" title="Eliminar" onClick={() => eliminar(r.id_retiro)}>🗑️</button>
                   </td>
                 </tr>
               ))}

@@ -361,8 +361,14 @@ function Gastos() {
 
   // ===== VISTA DESKTOP =====
   return (
-    <div className="modulo">
-      <h2>Gastos</h2>
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Gastos</h2>
+        <span className="contador">{gastosFiltrados.length}</span>
+        <div className="buscador-inline">
+          <input type="text" placeholder="🔎 Buscar por concepto, proveedor u observación..." value={textoBusqueda} onChange={(e) => setTextoBusqueda(e.target.value)} />
+        </div>
+      </div>
       <form className="formulario formulario-costos" onSubmit={guardar}>
         <div className="campo">
           <label>Concepto</label>
@@ -417,16 +423,12 @@ function Gastos() {
         </div>
       </form>
 
-      <div className="campo-buscador">
-        <input type="text" placeholder="🔎 Buscar por concepto, proveedor u observación..." value={textoBusqueda} onChange={(e) => setTextoBusqueda(e.target.value)} />
-      </div>
-
       {cargando && <p>Cargando...</p>}
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th>Fecha</th><th>Concepto</th><th>Importe</th><th>Medio de pago</th><th>Proveedor</th><th>Comprobante</th><th>Acciones</th>
@@ -445,8 +447,8 @@ function Gastos() {
                   <td>{g.proveedores?.descripcion || '—'}</td>
                   <td>{g.comprobante || '—'}</td>
                   <td>
-                    <button className="btn-link" onClick={() => iniciarEdicion(g)}>Editar</button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminar(g)}>Eliminar</button>
+                    <button className="icono-accion" title="Editar" onClick={() => iniciarEdicion(g)}>✏️</button>
+                    <button className="icono-accion" title="Eliminar" onClick={() => eliminar(g)}>🗑️</button>
                   </td>
                 </tr>
               ))}

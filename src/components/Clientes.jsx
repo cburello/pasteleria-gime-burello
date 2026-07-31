@@ -157,8 +157,22 @@ function Clientes() {
   const listaAMostrar = similaresEncontrados !== null ? similaresEncontrados : clientesFiltrados
 
   return (
-    <div className="modulo">
-      <h2>Clientes</h2>
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Clientes</h2>
+        <span className="contador">{listaAMostrar.length}</span>
+        <div className="buscador-inline">
+          <input
+            type="text"
+            placeholder="🔎 Buscar en la lista..."
+            value={textoBusqueda}
+            onChange={(e) => {
+              setTextoBusqueda(e.target.value)
+              setSimilaresEncontrados(null)
+            }}
+          />
+        </div>
+      </div>
 
       <form className="formulario formulario-costos" onSubmit={guardar}>
         <div className="campo">
@@ -253,24 +267,12 @@ function Clientes() {
         </div>
       )}
 
-      <div className="campo-buscador">
-        <input
-          type="text"
-          placeholder="🔎 Buscar en la lista..."
-          value={textoBusqueda}
-          onChange={(e) => {
-            setTextoBusqueda(e.target.value)
-            setSimilaresEncontrados(null)
-          }}
-        />
-      </div>
-
       {cargando && <p>Cargando...</p>}
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th>ID</th>
@@ -309,12 +311,8 @@ function Clientes() {
                     )}
                   </td>
                   <td>
-                    <button className="btn-link" onClick={() => iniciarEdicion(c)}>
-                      Editar
-                    </button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminar(c.id_cliente)}>
-                      Eliminar
-                    </button>
+                    <button className="icono-accion" title="Editar" onClick={() => iniciarEdicion(c)}>✏️</button>
+                    <button className="icono-accion" title="Eliminar" onClick={() => eliminar(c.id_cliente)}>🗑️</button>
                   </td>
                 </tr>
               ))}

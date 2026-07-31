@@ -173,25 +173,24 @@ function Recetas() {
   }
 
   return (
-    <div className="modulo">
-      <h2>Recetas</h2>
-
-      <div className="acciones-superiores">
-        <button className="btn-primario" onClick={iniciarNueva}>
-          + Nueva Receta
-        </button>
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Recetas</h2>
+        <span className="contador">{recetasFiltradas.length}</span>
+        <div className="buscador-inline">
+          <input
+            type="text"
+            placeholder="🔎 Buscar receta..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
+        </div>
         <button className="btn-secundario" onClick={abrirModalImprimir}>
-          🖨️ Imprimir recetas
+          🖨️ Imprimir
         </button>
-      </div>
-
-      <div className="campo-buscador">
-        <input
-          type="text"
-          placeholder="🔎 Buscar receta..."
-          value={textoBusqueda}
-          onChange={(e) => setTextoBusqueda(e.target.value)}
-        />
+        <button className="btn-primario" onClick={iniciarNueva}>
+          + Nueva
+        </button>
       </div>
 
       {cargando && <p>Cargando...</p>}
@@ -199,7 +198,7 @@ function Recetas() {
 
       {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th>ID</th>
@@ -225,12 +224,8 @@ function Recetas() {
                     {r.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(r.fecha_fin)}
                   </td>
                   <td>
-                    <button className="btn-link" onClick={() => abrirReceta(r)}>
-                      Ver / Editar
-                    </button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminarReceta(r.id_receta)}>
-                      Eliminar
-                    </button>
+                    <button className="icono-accion" title="Ver / Editar" onClick={() => abrirReceta(r)}>✏️</button>
+                    <button className="icono-accion" title="Eliminar" onClick={() => eliminarReceta(r.id_receta)}>🗑️</button>
                   </td>
                 </tr>
               ))}
@@ -633,169 +628,177 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
   }
 
   return (
-    <div className="modulo">
-      <button className="btn-volver" onClick={onVolver}>
-        ← Volver a Recetas
-      </button>
-
-      <h2>{idRecetaActual ? 'Editar Receta' : 'Nueva Receta'}</h2>
-
-      <div className="subseccion">
-        <h3>Datos generales</h3>
-        <div className="formulario formulario-costos">
-          <div className="campo" style={{ flex: 2 }}>
-            <label>Descripción</label>
-            <input
-              type="text"
-              placeholder="Ej: Torta de Chocolate"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-            />
-          </div>
-          <div className="campo">
-            <label>Cantidad producto final</label>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Ej: 1 o 20"
-              value={cantidadFinal}
-              onChange={(e) => setCantidadFinal(e.target.value)}
-            />
-          </div>
-          <div className="campo">
-            <label>Fecha inicio</label>
-            <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
-          </div>
-          <div className="campo">
-            <label>Fecha fin</label>
-            <input
-              type="date"
-              value={fechaFin === '3000-12-31' ? '' : fechaFin}
-              placeholder="Indefinida"
-              onChange={(e) => setFechaFin(e.target.value || '3000-12-31')}
-            />
-          </div>
-          <div className="campo-acciones">
-            <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardando}>
-              {guardando ? 'Guardando...' : 'Guardar datos generales'}
-            </button>
-          </div>
-        </div>
+    <div className="modulo modulo-compacto">
+      <div className="detalle-cabecera-compacta">
+        <button className="btn-volver" onClick={onVolver} style={{ marginBottom: 0 }}>← Volver a Recetas</button>
+        <h2>{idRecetaActual ? (descripcion || 'Editar Receta') : 'Nueva Receta'}</h2>
+        {idRecetaActual && <span className="id-badge">ID {idRecetaActual}</span>}
       </div>
 
-      {idRecetaActual && (
-        <div className="subseccion">
-          <h3>Ingredientes</h3>
-
-          <div className="formulario">
-            <div style={{ position: 'relative', flex: 2 }}>
+      <div className="detalle-dos-columnas">
+        <aside className="detalle-sidebar">
+          <div className="rotulo-grupo">Datos generales</div>
+          <div className="campos-apilados">
+            <div className="campo">
+              <label>Descripción</label>
               <input
                 type="text"
-                placeholder="🔎 Buscar materia prima..."
-                value={textoBuscarMateria}
-                onChange={(e) => {
-                  setTextoBuscarMateria(e.target.value)
-                  setMateriaParaAgregar(null)
-                  setCostoVigenteMateria(null)
-                }}
+                placeholder="Ej: Torta de Chocolate"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
               />
-              {textoBuscarMateria && !materiaParaAgregar && materiasFiltradas.length > 0 && (
-                <div className="dropdown-resultados">
-                  {materiasFiltradas.map((m) => (
-                    <div
-                      key={m.id_materia_prima}
-                      className="dropdown-item"
-                      onClick={() => seleccionarMateria(m)}
-                    >
-                      {m.descripcion}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Cantidad"
-              value={cantidadIngrediente}
-              onChange={(e) => setCantidadIngrediente(e.target.value)}
-              style={{ maxWidth: '120px' }}
-            />
-
-            <div className="unidad-fija">
-              {buscandoCosto && '...'}
-              {!buscandoCosto && materiaParaAgregar && costoVigenteMateria && (
-                <span className="badge-unidad">{costoVigenteMateria.unidad_medida}</span>
-              )}
-              {!buscandoCosto && materiaParaAgregar && !costoVigenteMateria && (
-                <span className="badge-unidad badge-error">Sin costo vigente</span>
-              )}
-              {!materiaParaAgregar && <span className="badge-unidad badge-vacio">Unidad</span>}
+            <div className="campo">
+              <label>Cantidad producto final</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Ej: 1 o 20"
+                value={cantidadFinal}
+                onChange={(e) => setCantidadFinal(e.target.value)}
+              />
             </div>
-
-            <button className="btn-primario" onClick={agregarIngrediente}>
-              + Agregar
+            <div className="campo">
+              <label>Fecha inicio</label>
+              <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+            </div>
+            <div className="campo">
+              <label>Fecha fin</label>
+              <input
+                type="date"
+                value={fechaFin === '3000-12-31' ? '' : fechaFin}
+                placeholder="Indefinida"
+                onChange={(e) => setFechaFin(e.target.value || '3000-12-31')}
+              />
+            </div>
+            <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardando} style={{ width: '100%' }}>
+              {guardando ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
 
-          {cargandoIngredientes && <p>Cargando ingredientes...</p>}
-
-          {!cargandoIngredientes && (
-            <div className="tabla-wrapper">
-              <table className="tabla">
-                <thead>
-                  <tr>
-                    <th>Materia Prima</th>
-                    <th>Cantidad</th>
-                    <th>Unidad</th>
-                    <th>Presentación</th>
-                    <th>Costo</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ingredientes.length === 0 && (
-                    <tr>
-                      <td colSpan="6">Todavía no agregaste ingredientes.</td>
-                    </tr>
+          {idRecetaActual && (
+            <>
+              <hr className="separador" />
+              <div className="rotulo-grupo">Costo</div>
+              {calculandoCosto ? (
+                <p style={{ fontSize: 12.5, color: '#8A6A66' }}>Calculando costo...</p>
+              ) : (
+                <div className="simulador-compacto">
+                  <div className="sim-fila"><span>Total receta</span><span>${costoTotal.toFixed(2)}</span></div>
+                  {cantidadFinal > 0 && (
+                    <div className="sim-fila sim-total"><span>Por unidad</span><span>${(costoTotal / cantidadFinal).toFixed(2)}</span></div>
                   )}
-                  {ingredientes.map((ing) => (
-                    <tr key={`${ing.id_materia_prima}-${ing.secuencia}`}>
-                      <td>{ing.materias_primas?.descripcion || ing.id_materia_prima}</td>
-                      <td>{ing.cantidad}</td>
-                      <td>{ing.unidad_medida}</td>
-                      <td>{ing.presentacion_vigente || <span className="badge-error-texto">Sin costo vigente</span>}</td>
-                      <td>{ing.costo_calculado !== null ? `$${ing.costo_calculado.toFixed(2)}` : '—'}</td>
-                      <td>
-                        <button
-                          className="btn-link btn-eliminar"
-                          onClick={() => quitarIngrediente(ing.id_materia_prima, ing.secuencia)}
-                        >
-                          Quitar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              )}
+            </>
           )}
+        </aside>
 
-          <div className="costo-total">
-            {calculandoCosto ? (
-              'Calculando costo...'
-            ) : (
-              <>
-                💰 Costo total de la receta: <strong>${costoTotal.toFixed(2)}</strong>
-                {cantidadFinal > 0 && (
-                  <span> &nbsp;|&nbsp; Costo por unidad: <strong>${(costoTotal / cantidadFinal).toFixed(2)}</strong></span>
-                )}
-              </>
-            )}
-          </div>
+        <div className="detalle-principal">
+          {idRecetaActual ? (
+            <>
+              <div className="rotulo-grupo">Ingredientes</div>
+              <div className="formulario">
+                <div style={{ position: 'relative', flex: 2 }}>
+                  <input
+                    type="text"
+                    placeholder="🔎 Buscar materia prima..."
+                    value={textoBuscarMateria}
+                    onChange={(e) => {
+                      setTextoBuscarMateria(e.target.value)
+                      setMateriaParaAgregar(null)
+                      setCostoVigenteMateria(null)
+                    }}
+                  />
+                  {textoBuscarMateria && !materiaParaAgregar && materiasFiltradas.length > 0 && (
+                    <div className="dropdown-resultados">
+                      {materiasFiltradas.map((m) => (
+                        <div
+                          key={m.id_materia_prima}
+                          className="dropdown-item"
+                          onClick={() => seleccionarMateria(m)}
+                        >
+                          {m.descripcion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Cantidad"
+                  value={cantidadIngrediente}
+                  onChange={(e) => setCantidadIngrediente(e.target.value)}
+                  style={{ maxWidth: '120px' }}
+                />
+
+                <div className="unidad-fija">
+                  {buscandoCosto && '...'}
+                  {!buscandoCosto && materiaParaAgregar && costoVigenteMateria && (
+                    <span className="badge-unidad">{costoVigenteMateria.unidad_medida}</span>
+                  )}
+                  {!buscandoCosto && materiaParaAgregar && !costoVigenteMateria && (
+                    <span className="badge-unidad badge-error">Sin costo vigente</span>
+                  )}
+                  {!materiaParaAgregar && <span className="badge-unidad badge-vacio">Unidad</span>}
+                </div>
+
+                <button className="btn-primario" onClick={agregarIngrediente}>
+                  + Agregar
+                </button>
+              </div>
+
+              {cargandoIngredientes && <p>Cargando ingredientes...</p>}
+
+              {!cargandoIngredientes && (
+                <div className="tabla-wrapper">
+                  <table className="tabla tabla-compacta">
+                    <thead>
+                      <tr>
+                        <th>Materia Prima</th>
+                        <th>Cantidad</th>
+                        <th>Unidad</th>
+                        <th>Presentación</th>
+                        <th>Costo</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ingredientes.length === 0 && (
+                        <tr>
+                          <td colSpan="6">Todavía no agregaste ingredientes.</td>
+                        </tr>
+                      )}
+                      {ingredientes.map((ing) => (
+                        <tr key={`${ing.id_materia_prima}-${ing.secuencia}`}>
+                          <td>{ing.materias_primas?.descripcion || ing.id_materia_prima}</td>
+                          <td>{ing.cantidad}</td>
+                          <td>{ing.unidad_medida}</td>
+                          <td>{ing.presentacion_vigente || <span className="badge-error-texto">Sin costo vigente</span>}</td>
+                          <td>{ing.costo_calculado !== null ? `$${ing.costo_calculado.toFixed(2)}` : '—'}</td>
+                          <td>
+                            <button
+                              className="icono-accion"
+                              title="Quitar"
+                              onClick={() => quitarIngrediente(ing.id_materia_prima, ing.secuencia)}
+                            >
+                              🗑️
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          ) : (
+            <p style={{ color: '#8A6A66', fontSize: 13 }}>Guardá primero los datos generales para poder agregar ingredientes.</p>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

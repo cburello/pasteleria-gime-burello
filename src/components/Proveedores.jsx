@@ -103,8 +103,19 @@ function Proveedores() {
     : proveedores
 
   return (
-    <div className="modulo">
-      <h2>Proveedores</h2>
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Proveedores</h2>
+        <span className="contador">{proveedoresFiltrados.length}</span>
+        <div className="buscador-inline">
+          <input
+            type="text"
+            placeholder="🔎 Buscar proveedor..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
+        </div>
+      </div>
 
       <form className="formulario" onSubmit={guardar}>
         <input
@@ -123,20 +134,11 @@ function Proveedores() {
         )}
       </form>
 
-      <div className="campo-buscador">
-        <input
-          type="text"
-          placeholder="🔎 Buscar proveedor..."
-          value={textoBusqueda}
-          onChange={(e) => setTextoBusqueda(e.target.value)}
-        />
-      </div>
-
       {cargando && <p>Cargando...</p>}
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <table className="tabla">
+        <table className="tabla tabla-compacta">
           <thead>
             <tr>
               <th>ID</th>
@@ -155,12 +157,8 @@ function Proveedores() {
                 <td>{p.id_proveedor}</td>
                 <td>{p.descripcion}</td>
                 <td>
-                  <button className="btn-link" onClick={() => iniciarEdicion(p)}>
-                    Editar
-                  </button>
-                  <button className="btn-link btn-eliminar" onClick={() => eliminar(p.id_proveedor)}>
-                    Eliminar
-                  </button>
+                  <button className="icono-accion" title="Editar" onClick={() => iniciarEdicion(p)}>✏️</button>
+                  <button className="icono-accion" title="Eliminar" onClick={() => eliminar(p.id_proveedor)}>🗑️</button>
                 </td>
               </tr>
             ))}

@@ -497,8 +497,19 @@ function Ingresos() {
 
   // ===== VISTA DESKTOP =====
   return (
-    <div className="modulo">
-      <h2>Ingresos</h2>
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Ingresos</h2>
+        <span className="contador">{ingresosFiltrados.length}</span>
+        <div className="buscador-inline">
+          <input
+            type="text"
+            placeholder="🔎 Buscar por concepto u observación..."
+            value={textoBusqueda}
+            onChange={(e) => setTextoBusqueda(e.target.value)}
+          />
+        </div>
+      </div>
 
       <p className="ayuda-vigencia">
         💡 Los ingresos por "Pedidos" se generan automáticamente al registrar un pago en el módulo Pedidos. Acá solo se cargan ingresos manuales (Consultoría, Aportes, etc.).
@@ -575,21 +586,12 @@ function Ingresos() {
         </div>
       </form>
 
-      <div className="campo-buscador">
-        <input
-          type="text"
-          placeholder="🔎 Buscar por concepto u observación..."
-          value={textoBusqueda}
-          onChange={(e) => setTextoBusqueda(e.target.value)}
-        />
-      </div>
-
       {cargando && <p>Cargando...</p>}
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th>Fecha</th>
@@ -631,8 +633,8 @@ function Ingresos() {
                     <td>{i.medios_pagos?.descripcion || i.id_medio_pago}</td>
                     <td style={{ fontSize: '13px' }}>{origenTexto}</td>
                     <td>
-                      <button className="btn-link" onClick={() => iniciarEdicion(i)}>Editar</button>
-                      <button className="btn-link btn-eliminar" onClick={() => eliminar(i)}>Eliminar</button>
+                      <button className="icono-accion" title="Editar" onClick={() => iniciarEdicion(i)}>✏️</button>
+                      <button className="icono-accion" title="Eliminar" onClick={() => eliminar(i)}>🗑️</button>
                     </td>
                   </tr>
                 )

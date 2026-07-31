@@ -144,7 +144,6 @@ function AnalisisPrecios() {
       return
     }
 
-    // Un solo costo vigente por materia prima (por las dudas, nos quedamos con el de fecha_inicio más reciente)
     const costoPorMateriaPrima = new Map()
     for (const c of costos || []) {
       const existente = costoPorMateriaPrima.get(c.id_materia_prima)
@@ -170,7 +169,7 @@ function AnalisisPrecios() {
       let total = 0
       for (const ing of detalle) {
         const costo = costoPorMateriaPrima.get(ing.id_materia_prima)
-        if (!costo) return null // si falta el costo vigente de algún ingrediente, no confiamos en el teórico
+        if (!costo) return null
         const cantidadPresentacion = extraerCantidadPresentacion(costo.presentacion)
         if (!cantidadPresentacion || cantidadPresentacion <= 0) return null
         const precioUnitario = parseFloat(costo.precio) / cantidadPresentacion
@@ -347,7 +346,7 @@ function AnalisisPrecios() {
   }).length
 
   return (
-    <div className="modulo">
+    <div className="modulo modulo-compacto">
       <h2>Análisis de Precios</h2>
 
       <p className="ayuda-vigencia">
@@ -357,23 +356,19 @@ function AnalisisPrecios() {
       </p>
 
       {!cargando && !error && (
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
-          <div style={{ flex: '1 1 160px', border: '1px solid #E8D5CF', borderRadius: '10px', padding: '10px 14px' }}>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#C0392B' }}>{conteoRiesgo}</div>
-            <div style={{ fontSize: '11.5px', color: '#8A6A66' }}>Por debajo del teórico</div>
-          </div>
-          <div style={{ flex: '1 1 160px', border: '1px solid #E8D5CF', borderRadius: '10px', padding: '10px 14px' }}>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#2E7D32' }}>{conteoOk}</div>
-            <div style={{ fontSize: '11.5px', color: '#8A6A66' }}>Alineados con el teórico</div>
-          </div>
-          <div style={{ flex: '1 1 160px', border: '1px solid #E8D5CF', borderRadius: '10px', padding: '10px 14px' }}>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#4A2C2A' }}>{conteoSinDato}</div>
-            <div style={{ fontSize: '11.5px', color: '#8A6A66' }}>Sin costo o sin precio cargado</div>
-          </div>
-          <div style={{ flex: '1 1 160px', border: '1px solid #E8D5CF', borderRadius: '10px', padding: '10px 14px' }}>
-            <div style={{ fontSize: '22px', fontWeight: 700, color: '#E8765C' }}>{filas.length}</div>
-            <div style={{ fontSize: '11.5px', color: '#8A6A66' }}>Productos activos</div>
-          </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <span className="stat-chip" style={{ color: '#C0392B' }}>
+            <strong>{conteoRiesgo}</strong> por debajo
+          </span>
+          <span className="stat-chip" style={{ color: '#2E7D32' }}>
+            <strong>{conteoOk}</strong> alineados
+          </span>
+          <span className="stat-chip" style={{ color: '#8A6A66' }}>
+            <strong>{conteoSinDato}</strong> sin costo o precio
+          </span>
+          <span className="stat-chip" style={{ color: '#E8765C' }}>
+            <strong>{filas.length}</strong> productos activos
+          </span>
         </div>
       )}
 

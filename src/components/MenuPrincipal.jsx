@@ -140,7 +140,7 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
 
   // ===== MENÚ DESKTOP (sin cambios) =====
   return (
-    <nav className="app-nav" ref={menuRef}>
+    <nav className="app-nav compacto" ref={menuRef}>
       <button
         className={paginaActual === 'inicio' ? 'nav-btn active' : 'nav-btn'}
         onClick={() => seleccionarItem('inicio')}

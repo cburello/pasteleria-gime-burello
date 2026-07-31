@@ -145,7 +145,7 @@ const [sesion, setSesion] = useState(null)
 
   return (
     <div className="app-container">
-<header className="app-header">
+<header className="app-header compacto">
         <div className="app-header-marca">
           <img src={logo} alt="Gime Burello Pastelería" className="app-logo" />
           <h1>Gime Burello Pasteleria<span>Pastelería</span></h1>

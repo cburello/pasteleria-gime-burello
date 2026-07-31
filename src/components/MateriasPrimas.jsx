@@ -160,8 +160,22 @@ function MateriasPrimas() {
   const listaAMostrar = similaresEncontrados !== null ? similaresEncontrados : materiasFiltradas
 
   return (
-    <div className="modulo">
-      <h2>Materias Primas</h2>
+    <div className="modulo modulo-compacto">
+      <div className="cabecera-lista">
+        <h2>Materias Primas</h2>
+        <span className="contador">{listaAMostrar.length}</span>
+        <div className="buscador-inline">
+          <input
+            type="text"
+            placeholder="🔎 Buscar en la lista..."
+            value={textoBusqueda}
+            onChange={(e) => {
+              setTextoBusqueda(e.target.value)
+              setSimilaresEncontrados(null)
+            }}
+          />
+        </div>
+      </div>
 
       {/* Formulario de alta/edición */}
       <form className="formulario" onSubmit={guardar}>
@@ -207,25 +221,12 @@ function MateriasPrimas() {
         </div>
       )}
 
-      {/* Buscador de la grilla general */}
-      <div className="campo-buscador">
-        <input
-          type="text"
-          placeholder="🔎 Buscar en la lista..."
-          value={textoBusqueda}
-          onChange={(e) => {
-            setTextoBusqueda(e.target.value)
-            setSimilaresEncontrados(null)
-          }}
-        />
-      </div>
-
       {cargando && <p>Cargando...</p>}
       {error && <p className="mensaje-error">{error}</p>}
 
 {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla">
+          <table className="tabla tabla-compacta">
             <thead>
               <tr>
                 <th>ID</th>
@@ -244,15 +245,9 @@ function MateriasPrimas() {
                   <td>{m.id_materia_prima}</td>
                   <td>{m.descripcion}</td>
                   <td>
-                    <button className="btn-link" onClick={() => iniciarEdicion(m)}>
-                      Editar
-                    </button>
-                    <button className="btn-link" onClick={() => setMateriaSeleccionada(m)}>
-                      Ver costos
-                    </button>
-                    <button className="btn-link btn-eliminar" onClick={() => eliminar(m.id_materia_prima)}>
-                      Eliminar
-                    </button>
+                    <button className="icono-accion" title="Editar" onClick={() => iniciarEdicion(m)}>✏️</button>
+                    <button className="icono-accion" title="Ver costos" onClick={() => setMateriaSeleccionada(m)}>💲</button>
+                    <button className="icono-accion" title="Eliminar" onClick={() => eliminar(m.id_materia_prima)}>🗑️</button>
                   </td>
                 </tr>
               ))}
