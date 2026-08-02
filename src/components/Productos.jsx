@@ -177,6 +177,7 @@ function Productos() {
 // ============================================================
 function DetalleProducto({ producto, onVolver }) {
   const { mostrarToast, confirmar } = useNotificaciones()
+  const [idProducto, setIdProducto] = useState(producto.id_producto)
   const [descripcion, setDescripcion] = useState(producto.descripcion)
   const [idReceta, setIdReceta] = useState(producto.id_receta)
   const [coeficiente, setCoeficiente] = useState(producto.coeficiente_ganancia)
@@ -214,13 +215,16 @@ function DetalleProducto({ producto, onVolver }) {
   useEffect(() => {
     cargarRecetas()
     cargarSecciones()
-    if (producto.id_producto) {
+  }, [])
+
+  useEffect(() => {
+    if (idProducto) {
       cargarPrecios()
       refFechaInicioPrecio.current?.focus()
     } else {
       setCargandoPrecios(false)
     }
-  }, [])
+  }, [idProducto])
 
   useEffect(() => {
     if (idReceta) {
@@ -274,13 +278,13 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
 
   async function subirImagen(file) {
     if (!file) return
-    if (!producto.id_producto) {
+    if (!idProducto) {
       mostrarToast('Guardá primero los datos generales para poder subir la imagen.', 'error')
       return
     }
     setSubiendoImagen(true)
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-    const ruta = `productos/${producto.id_producto}-${Date.now()}.${ext}`
+    const ruta = `productos/${idProducto}-${Date.now()}.${ext}`
     const { error } = await supabase.storage
       .from('catalogo')
       .upload(ruta, file, { upsert: true, contentType: file.type })
@@ -383,10 +387,10 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
       orden_web: ordenWeb === '' || ordenWeb === null ? null : parseInt(ordenWeb),
     }
 
-    let idResultante = producto.id_producto
+    let idResultante = idProducto
 
-    if (producto.id_producto) {
-      const { error } = await supabase.from('productos').update(registro).eq('id_producto', producto.id_producto)
+    if (idProducto) {
+      const { error } = await supabase.from('productos').update(registro).eq('id_producto', idProducto)
       if (error) {
         mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardandoCabecera(false)
@@ -410,9 +414,8 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     const id = await guardarCabecera()
     if (id) {
       mostrarToast('Producto guardado correctamente')
-      if (!producto.id_producto) {
-        producto.id_producto = id
-        window.location.reload()
+      if (!idProducto) {
+        setIdProducto(id)
       }
     }
   }
@@ -422,7 +425,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     const { data, error } = await supabase
       .from('precios')
       .select('*')
-      .eq('id_producto', producto.id_producto)
+      .eq('id_producto', idProducto)
       .order('fecha_inicio', { ascending: false })
 
     if (!error) {
@@ -516,7 +519,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     }
 
     const registro = {
-      id_producto: producto.id_producto,
+      id_producto: idProducto,
       fecha_inicio: fechaInicioPrecio,
       fecha_fin: finEfectivo,
       precio_venta: parseFloat(precioVentaManual),
@@ -573,8 +576,8 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     <div className="modulo modulo-compacto">
       <div className="detalle-cabecera-compacta">
         <button className="btn-volver" onClick={onVolver} style={{ marginBottom: 0 }}>← Volver a Productos</button>
-        <h2>{descripcion || (producto.id_producto ? 'Editar Producto' : 'Nuevo Producto')}</h2>
-        {producto.id_producto && <span className="id-badge">ID {producto.id_producto}</span>}
+        <h2>{descripcion || (idProducto ? 'Editar Producto' : 'Nuevo Producto')}</h2>
+        {idProducto && <span className="id-badge">ID {idProducto}</span>}
       </div>
 
       <div className="detalle-dos-columnas">
@@ -668,49 +671,53 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
           </div>
 
           {pestana === 'historial' && (
-            !producto.id_producto ? (
+            !idProducto ? (
               <p style={{ color: '#8A6A66', fontSize: 13 }}>Guardá primero los datos generales para poder cargar precios.</p>
             ) : (
               <>
                 <div className="formulario formulario-costos">
-                  <div className="campo">
-                    <label>Fecha inicio</label>
-                    <input
-                      type="date"
-                      ref={refFechaInicioPrecio}
-                      value={fechaInicioPrecio}
-                      onChange={(e) => setFechaInicioPrecio(e.target.value)}
-                    />
+                  <div style={{ display: 'flex', gap: '14px' }}>
+                    <div className="campo">
+                      <label>Fecha inicio</label>
+                      <input
+                        type="date"
+                        ref={refFechaInicioPrecio}
+                        value={fechaInicioPrecio}
+                        onChange={(e) => setFechaInicioPrecio(e.target.value)}
+                      />
+                    </div>
+                    <div className="campo">
+                      <label>Fecha fin</label>
+                      <input
+                        type="date"
+                        value={fechaFinPrecio === '3000-12-31' ? '' : fechaFinPrecio}
+                        placeholder="Indefinida"
+                        onChange={(e) => setFechaFinPrecio(e.target.value || '3000-12-31')}
+                      />
+                    </div>
                   </div>
-                  <div className="campo">
-                    <label>Fecha fin</label>
-                    <input
-                      type="date"
-                      value={fechaFinPrecio === '3000-12-31' ? '' : fechaFinPrecio}
-                      placeholder="Indefinida"
-                      onChange={(e) => setFechaFinPrecio(e.target.value || '3000-12-31')}
-                    />
-                  </div>
-                  <div className="campo">
-                    <label>Precio de venta</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={precioVentaManual}
-                      onChange={(e) => setPrecioVentaManual(e.target.value)}
-                    />
-                  </div>
-                  <div className="campo">
-                    <label style={{ color: '#5B21B6' }}>Precio mayorista *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={precioMayoristaManual}
-                      onChange={(e) => setPrecioMayoristaManual(e.target.value)}
-                      style={{ background: '#fff', colorScheme: 'light', borderColor: '#C4B5FD' }}
-                    />
+                  <div style={{ display: 'flex', gap: '14px' }}>
+                    <div className="campo">
+                      <label>Precio de venta</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={precioVentaManual}
+                        onChange={(e) => setPrecioVentaManual(e.target.value)}
+                      />
+                    </div>
+                    <div className="campo">
+                      <label style={{ color: '#5B21B6' }}>Precio mayorista *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={precioMayoristaManual}
+                        onChange={(e) => setPrecioMayoristaManual(e.target.value)}
+                        style={{ background: '#fff', colorScheme: 'light', borderColor: '#C4B5FD' }}
+                      />
+                    </div>
                   </div>
                   <div className="campo-acciones">
                     <button className="btn-secundario" type="button" onClick={iniciarNuevoPrecio}>
@@ -829,7 +836,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
 
                 <div className="campo" style={{ flex: 2 }}>
                   <label>Imagen</label>
-                  {producto.id_producto ? (
+                  {idProducto ? (
                     <>
                       <input
                         type="file"

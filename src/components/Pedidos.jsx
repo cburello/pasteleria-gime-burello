@@ -1677,35 +1677,36 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
 
   return (
     <div className="modulo">
-      <button className="btn-volver" onClick={onVolver}>
-        ← Volver a Pedidos
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
+        <button className="btn-volver" onClick={onVolver} style={{ marginBottom: 0, fontSize: '13px' }}>
+          ← Volver a Pedidos
+        </button>
 
-      <h2>{pedido.id_pedido ? `Editar Pedido #${pedido.id_pedido}` : 'Nuevo Pedido'}</h2>
+        <h2 style={{ fontSize: '18px', margin: 0, whiteSpace: 'nowrap' }}>
+          {pedido.id_pedido ? `Editar Pedido #${pedido.id_pedido}` : 'Nuevo Pedido'}
+        </h2>
 
-      {esMayorista && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          background: 'linear-gradient(135deg, #7C3AED, #A855F7)',
-          color: 'white', padding: '12px 16px', borderRadius: '10px',
-          fontSize: '14px', fontWeight: 600, marginBottom: '16px',
-          boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)',
-        }}>
-          🏪 CLIENTE MAYORISTA — se aplican precios mayoristas
-        </div>
-      )}
+        {esMayorista && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '4px',
+            background: 'linear-gradient(135deg, #7C3AED, #A855F7)',
+            color: 'white', padding: '4px 12px', borderRadius: '14px',
+            fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap',
+          }}>
+            🏪 CLIENTE MAYORISTA — se aplican precios mayoristas
+          </span>
+        )}
 
-      {pedido.id_pedido && lineas.length > 0 && (
-        <div className="acciones-superiores">
-          <button className="btn-secundario" onClick={generarComanda}>
+        {pedido.id_pedido && lineas.length > 0 && (
+          <button className="btn-secundario" onClick={generarComanda} style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
             🧾 Generar Comanda (PDF)
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="subseccion">
         <h3>Datos del pedido</h3>
-        <div className="formulario formulario-costos">
+        <div className="formulario formulario-costos formulario-compacto">
           <div className="campo" style={{ flex: 2, position: 'relative' }}>
             <label>Cliente (opcional)</label>
             <input
@@ -1739,10 +1740,14 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
             <label>Fecha de entrega</label>
             <input type="date" value={fechaEntrega} onChange={(e) => setFechaEntrega(e.target.value)} />
           </div>
+
+          <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardandoCabecera}>
+            {guardandoCabecera ? 'Guardando...' : 'Guardar pedido'}
+          </button>
         </div>
 
         {(!clienteSeleccionado || clienteEsAnonimo(clienteSeleccionado)) && (
-          <div className="formulario formulario-costos" style={{ marginTop: '10px' }}>
+          <div className="formulario formulario-costos formulario-compacto" style={{ marginTop: '10px' }}>
             <div className="campo" style={{ flex: 2 }}>
               <label>Nombre (obligatorio)</label>
               <input
@@ -1779,12 +1784,6 @@ const siguienteSecuencia = pagosActuales && pagosActuales.length > 0
             📍 {clienteSeleccionado.domicilio || 'Sin domicilio'} &nbsp;|&nbsp; 📞 {clienteSeleccionado.telefono || 'Sin teléfono'}
           </p>
         )}
-
-        <div className="campo-acciones" style={{ marginTop: '14px' }}>
-          <button className="btn-primario" onClick={handleGuardarCabecera} disabled={guardandoCabecera}>
-            {guardandoCabecera ? 'Guardando...' : 'Guardar datos del pedido'}
-          </button>
-        </div>
       </div>
 
       {pedido.id_pedido && (

@@ -18,6 +18,10 @@ function MateriasPrimas() {
   // Búsqueda en la grilla (texto parcial)
   const [textoBusqueda, setTextoBusqueda] = useState('')
 
+  // Materias primas sin costo vigente hoy, y si el filtro está activo
+  const [idsSinCosto, setIdsSinCosto] = useState(new Set())
+  const [soloSinCosto, setSoloSinCosto] = useState(false)
+
   // Resultado de "buscar similares" al cargar una nueva
   const [similaresEncontrados, setSimilaresEncontrados] = useState(null)
   const [yaVerificado, setYaVerificado] = useState(false)
@@ -36,9 +40,28 @@ function MateriasPrimas() {
 
     if (error) {
       setError('Error al cargar los datos: ' + error.message)
-    } else {
-      setMaterias(data)
+      setCargando(false)
+      return
     }
+    setMaterias(data)
+
+    // Costo vigente hoy (hora Argentina) por materia prima, para el filtro
+    const hoy = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 10)
+    const { data: costos } = await supabase
+      .from('costos_materia_prima')
+      .select('id_materia_prima, fecha_inicio, fecha_fin')
+
+    const conVigente = new Set(
+      (costos || [])
+        .filter((c) => {
+          const desde = (c.fecha_inicio || '').slice(0, 10)
+          const hasta = (c.fecha_fin || '').slice(0, 10)
+          return desde <= hoy && (!hasta || hoy <= hasta)
+        })
+        .map((c) => c.id_materia_prima)
+    )
+    setIdsSinCosto(new Set((data || []).filter((m) => !conVigente.has(m.id_materia_prima)).map((m) => m.id_materia_prima)))
+
     setCargando(false)
   }
 
@@ -149,33 +172,19 @@ function MateriasPrimas() {
     )
   }
 
-  // Lista filtrada por el buscador de la grilla
-  const materiasFiltradas = textoBusqueda.trim()
-    ? materias.filter((m) =>
-        normalizar(m.descripcion).includes(normalizar(textoBusqueda))
-      )
-    : materias
+  // Lista filtrada por el buscador de la grilla y, opcionalmente, solo sin costo vigente
+  const materiasFiltradas = materias.filter((m) => {
+    if (soloSinCosto && !idsSinCosto.has(m.id_materia_prima)) return false
+    if (textoBusqueda.trim() && !normalizar(m.descripcion).includes(normalizar(textoBusqueda))) return false
+    return true
+  })
 
   // Si hay búsqueda de similares activa, esa lista tiene prioridad visual
   const listaAMostrar = similaresEncontrados !== null ? similaresEncontrados : materiasFiltradas
 
   return (
-    <div className="modulo modulo-compacto">
-      <div className="cabecera-lista">
-        <h2>Materias Primas</h2>
-        <span className="contador">{listaAMostrar.length}</span>
-        <div className="buscador-inline">
-          <input
-            type="text"
-            placeholder="🔎 Buscar en la lista..."
-            value={textoBusqueda}
-            onChange={(e) => {
-              setTextoBusqueda(e.target.value)
-              setSimilaresEncontrados(null)
-            }}
-          />
-        </div>
-      </div>
+    <div className="modulo">
+      <h2>Materias Primas</h2>
 
       {/* Formulario de alta/edición */}
       <form className="formulario" onSubmit={guardar}>
@@ -221,12 +230,34 @@ function MateriasPrimas() {
         </div>
       )}
 
+      {/* Buscador de la grilla general */}
+      <div className="campo-buscador" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="🔎 Buscar en la lista..."
+          value={textoBusqueda}
+          onChange={(e) => {
+            setTextoBusqueda(e.target.value)
+            setSimilaresEncontrados(null)
+          }}
+          style={{ flex: 1, minWidth: '200px' }}
+        />
+        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#8A6A66', whiteSpace: 'nowrap' }}>
+          <input
+            type="checkbox"
+            checked={soloSinCosto}
+            onChange={(e) => setSoloSinCosto(e.target.checked)}
+          />
+          ⚠️ Solo sin costo vigente ({idsSinCosto.size})
+        </label>
+      </div>
+
       {cargando && <p>Cargando...</p>}
       {error && <p className="mensaje-error">{error}</p>}
 
 {!cargando && !error && (
         <div className="tabla-wrapper">
-          <table className="tabla tabla-compacta">
+          <table className="tabla">
             <thead>
               <tr>
                 <th>ID</th>
@@ -243,11 +274,34 @@ function MateriasPrimas() {
               {listaAMostrar.map((m) => (
                 <tr key={m.id_materia_prima} className={similaresEncontrados !== null ? 'fila-destacada' : ''}>
                   <td>{m.id_materia_prima}</td>
-                  <td>{m.descripcion}</td>
                   <td>
-                    <button className="icono-accion" title="Editar" onClick={() => iniciarEdicion(m)}>✏️</button>
-                    <button className="icono-accion" title="Ver costos" onClick={() => setMateriaSeleccionada(m)}>💲</button>
-                    <button className="icono-accion" title="Eliminar" onClick={() => eliminar(m.id_materia_prima)}>🗑️</button>
+                    {m.descripcion}
+                    {idsSinCosto.has(m.id_materia_prima) && (
+                      <span
+                        style={{
+                          marginLeft: '8px',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          background: '#FBEFD9',
+                          color: '#6B5310',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Sin costo
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <button className="btn-link" onClick={() => iniciarEdicion(m)}>
+                      Editar
+                    </button>
+                    <button className="btn-link" onClick={() => setMateriaSeleccionada(m)}>
+                      Ver costos
+                    </button>
+                    <button className="btn-link btn-eliminar" onClick={() => eliminar(m.id_materia_prima)}>
+                      Eliminar
+                    </button>
                   </td>
                 </tr>
               ))}

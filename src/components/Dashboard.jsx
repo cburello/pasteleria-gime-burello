@@ -23,7 +23,6 @@ function Dashboard({ onAbrirPedido }) {
   const [conSaldoPendiente, setConSaldoPendiente] = useState([])
   const [resumenMes, setResumenMes] = useState({ cantidad: 0, totalFacturado: 0, totalCobrado: 0 })
   const [tipoListaPdf, setTipoListaPdf] = useState('ambos')
-  const [modoPdf, setModoPdf] = useState('foto')
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [sinCostoVigente, setSinCostoVigente] = useState([])
 
@@ -127,7 +126,7 @@ function Dashboard({ onAbrirPedido }) {
   async function generarListaPrecios() {
     setGenerandoPdf(true)
     try {
-      await generarListaPreciosDesdeBD(supabase, tipoListaPdf, modoPdf === 'foto')
+      await generarListaPreciosDesdeBD(supabase, tipoListaPdf)
     } catch (e) {
       mostrarToast('No se pudo generar la lista de precios: ' + e.message, 'error')
     }
@@ -141,22 +140,17 @@ function Dashboard({ onAbrirPedido }) {
         style={{
           background: '#FBEFD9',
           border: '1px solid #E3C77A',
-          borderLeft: '4px solid #C9A227',
-          borderRadius: '10px',
-          padding: '12px 14px',
-          marginBottom: '16px',
+          borderLeft: '3px solid #C9A227',
+          borderRadius: '7px',
+          padding: '5px 10px',
+          marginBottom: '10px',
           color: '#6B5310',
-          fontSize: '.88rem',
-          lineHeight: 1.6,
+          fontSize: '11px',
+          fontWeight: 600,
         }}
       >
-        <strong>⚠️ {sinCostoVigente.length} materia{sinCostoVigente.length > 1 ? 's' : ''} prima
-        {sinCostoVigente.length > 1 ? 's' : ''} sin costo vigente.</strong> Los precios teóricos que la usen quedan mal calculados
-        hasta que cargues un costo con vigencia a hoy.
-        <div style={{ marginTop: '6px' }}>
-          {sinCostoVigente.slice(0, 8).map((m) => m.descripcion).join(' · ')}
-          {sinCostoVigente.length > 8 ? ` · y ${sinCostoVigente.length - 8} más` : ''}
-        </div>
+        ⚠️ {sinCostoVigente.length} materia{sinCostoVigente.length > 1 ? 's' : ''} prima
+        {sinCostoVigente.length > 1 ? 's' : ''} sin costo vigente
       </div>
     )
   }
@@ -195,7 +189,7 @@ function Dashboard({ onAbrirPedido }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
           <select
             value={tipoListaPdf}
             onChange={(e) => setTipoListaPdf(e.target.value)}
@@ -205,23 +199,15 @@ function Dashboard({ onAbrirPedido }) {
             <option value="minorista">Solo minorista</option>
             <option value="mayorista">Solo mayorista</option>
           </select>
-          <select
-            value={modoPdf}
-            onChange={(e) => setModoPdf(e.target.value)}
-            style={{ flex: 1, padding: '9px 10px', border: '1px solid #E8D5CF', borderRadius: '8px', fontSize: '13px', fontFamily: 'Poppins, sans-serif' }}
+          <button
+            className="btn-secundario"
+            style={{ whiteSpace: 'nowrap', padding: '9px 14px', fontSize: '13px' }}
+            onClick={generarListaPrecios}
+            disabled={generandoPdf}
           >
-            <option value="foto">PDF con Foto</option>
-            <option value="normal">PDF Normal</option>
-          </select>
+            {generandoPdf ? 'Generando...' : '📄 Lista de precios'}
+          </button>
         </div>
-        <button
-          className="btn-secundario"
-          style={{ width: '100%', marginTop: '8px', padding: '9px 14px', fontSize: '13px' }}
-          onClick={generarListaPrecios}
-          disabled={generandoPdf}
-        >
-          {generandoPdf ? 'Generando...' : '📄 Lista de precios'}
-        </button>
 
         <h3 style={{ fontSize: '15px', margin: '20px 0 10px', color: '#4A2C2A' }}>
           Próximos a entregar (7 días)

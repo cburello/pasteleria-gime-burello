@@ -173,6 +173,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
 // ============================================================
 function DetalleCombo({ combo, onVolver }) {
   const { mostrarToast, confirmar } = useNotificaciones()
+  const [idCombo, setIdCombo] = useState(combo.id_combo)
   const [descripcion, setDescripcion] = useState(combo.descripcion)
   const [precio, setPrecio] = useState(combo.precio || '')
   const [fechaInicio, setFechaInicio] = useState(combo.fecha_inicio?.slice(0, 10) || '')
@@ -204,12 +205,15 @@ function DetalleCombo({ combo, onVolver }) {
     cargarCombosExistentes()
     cargarProductosDisponibles()
     cargarSecciones()
-    if (combo.id_combo) {
+  }, [])
+
+  useEffect(() => {
+    if (idCombo) {
       cargarProductosDelCombo()
     } else {
       setCargandoProductos(false)
     }
-  }, [])
+  }, [idCombo])
 
   function normalizar(texto) {
     return texto
@@ -248,13 +252,13 @@ function DetalleCombo({ combo, onVolver }) {
 
   async function subirImagen(file) {
     if (!file) return
-    if (!combo.id_combo) {
+    if (!idCombo) {
       mostrarToast('Guardá primero el combo para poder subir la imagen.', 'error')
       return
     }
     setSubiendoImagen(true)
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-    const ruta = `combos/${combo.id_combo}-${Date.now()}.${ext}`
+    const ruta = `combos/${idCombo}-${Date.now()}.${ext}`
     const { error } = await supabase.storage
       .from('catalogo')
       .upload(ruta, file, { upsert: true, contentType: file.type })
@@ -360,7 +364,7 @@ function DetalleCombo({ combo, onVolver }) {
     const { data, error } = await supabase
       .from('detalle_combo')
       .select('*, productos(id_producto, descripcion, id_receta, coeficiente_ganancia)')
-      .eq('id_combo', combo.id_combo)
+      .eq('id_combo', idCombo)
 
     if (!error && data) {
       const enriquecido = await Promise.all(
@@ -384,7 +388,7 @@ function DetalleCombo({ combo, onVolver }) {
   }
 
   async function agregarProducto() {
-    if (!combo.id_combo) {
+    if (!idCombo) {
       mostrarToast('Primero guardá los datos generales del combo antes de agregar productos', 'error')
       return
     }
@@ -400,7 +404,7 @@ function DetalleCombo({ combo, onVolver }) {
     }
 
     const { error } = await supabase.from('detalle_combo').insert({
-      id_combo: combo.id_combo,
+      id_combo: idCombo,
       id_producto: productoParaAgregar.id_producto,
       cantidad: parseFloat(cantidadProducto),
     })
@@ -422,7 +426,7 @@ function DetalleCombo({ combo, onVolver }) {
     const { error } = await supabase
       .from('detalle_combo')
       .delete()
-      .eq('id_combo', combo.id_combo)
+      .eq('id_combo', idCombo)
       .eq('id_producto', idProducto)
 
     if (error) {
@@ -469,7 +473,7 @@ function DetalleCombo({ combo, onVolver }) {
     }
 
     const mismaDescripcion = combosExistentes.filter(
-      (c) => normalizar(c.descripcion) === normalizar(descripcion) && c.id_combo !== combo.id_combo
+      (c) => normalizar(c.descripcion) === normalizar(descripcion) && c.id_combo !== idCombo
     )
 
     const conflictivos = mismaDescripcion.filter((c) =>
@@ -513,10 +517,10 @@ function DetalleCombo({ combo, onVolver }) {
       orden_web: ordenWeb === '' || ordenWeb === null ? null : parseInt(ordenWeb),
     }
 
-    let idResultante = combo.id_combo
+    let idResultante = idCombo
 
-    if (combo.id_combo) {
-      const { error } = await supabase.from('combos').update(registro).eq('id_combo', combo.id_combo)
+    if (idCombo) {
+      const { error } = await supabase.from('combos').update(registro).eq('id_combo', idCombo)
       if (error) {
         mostrarToast('Error al guardar: ' + error.message, 'error')
         setGuardando(false)
@@ -540,9 +544,8 @@ function DetalleCombo({ combo, onVolver }) {
     const id = await guardarCombo()
     if (id) {
       mostrarToast('Combo guardado correctamente')
-      if (!combo.id_combo) {
-        combo.id_combo = id
-        window.location.reload()
+      if (!idCombo) {
+        setIdCombo(id)
       }
     }
   }
@@ -551,8 +554,8 @@ function DetalleCombo({ combo, onVolver }) {
     <div className="modulo modulo-compacto">
       <div className="detalle-cabecera-compacta">
         <button className="btn-volver" onClick={onVolver} style={{ marginBottom: 0 }}>← Volver a Combos</button>
-        <h2>{combo.id_combo ? (descripcion || 'Editar Combo') : 'Nuevo Combo'}</h2>
-        {combo.id_combo && <span className="id-badge">ID {combo.id_combo}</span>}
+        <h2>{idCombo ? (descripcion || 'Editar Combo') : 'Nuevo Combo'}</h2>
+        {idCombo && <span className="id-badge">ID {idCombo}</span>}
       </div>
 
       <div className="detalle-dos-columnas">
@@ -591,7 +594,7 @@ function DetalleCombo({ combo, onVolver }) {
                 onChange={(e) => setPrecio(e.target.value)}
               />
             </div>
-            {combo.id_combo && (
+            {idCombo && (
               <button className="btn-secundario" type="button" onClick={usarPrecioSugerido} style={{ width: '100%' }}>
                 Usar sugerido (${formatearMoneda(precioSugerido)})
               </button>
@@ -613,7 +616,7 @@ function DetalleCombo({ combo, onVolver }) {
           </div>
 
           {pestana === 'productos' && (
-            !combo.id_combo ? (
+            !idCombo ? (
               <p style={{ color: '#8A6A66', fontSize: 13 }}>Guardá primero los datos generales para poder agregar productos.</p>
             ) : (
               <>
@@ -762,7 +765,7 @@ function DetalleCombo({ combo, onVolver }) {
 
                 <div className="campo" style={{ flex: 2 }}>
                   <label>Imagen</label>
-                  {combo.id_combo ? (
+                  {idCombo ? (
                     <>
                       <input
                         type="file"
