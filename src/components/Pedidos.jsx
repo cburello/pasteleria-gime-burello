@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { LOGO_BASE64 } from '../lib/logoBase64'
+import { generarPdfPedidosEntrega } from '../lib/pedidosEntregaPdf'
 import { useNotificaciones } from '../hooks/useNotificaciones'
 
 // Detecta si la pantalla es de tamaño mobile (mismo breakpoint que App.css: 768px).
@@ -34,6 +35,13 @@ function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
   const [pedidoActual, setPedidoActual] = useState(null)
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
+
+  // --- PDF de pedidos a entregar ---
+  const hoyIso = new Date().toISOString().slice(0, 10)
+  const [entregaDesde, setEntregaDesde] = useState(hoyIso)
+  const [entregaHasta, setEntregaHasta] = useState(hoyIso)
+  const [incluirImportes, setIncluirImportes] = useState(false)
+  const [generandoEntregas, setGenerandoEntregas] = useState(false)
 
   // --- Cobro rápido desde la lista (mobile) ---
   const [pedidoCobro, setPedidoCobro] = useState(null)
@@ -126,6 +134,20 @@ function formatearFecha(fecha) {
 
     setPedidos(pedidosConTotales)
     setCargando(false)
+  }
+
+  async function generarEntregas() {
+    setGenerandoEntregas(true)
+    try {
+      await generarPdfPedidosEntrega(supabase, {
+        desde: entregaDesde,
+        hasta: entregaHasta,
+        incluirImportes,
+      })
+    } catch (err) {
+      mostrarToast(err.message, 'error')
+    }
+    setGenerandoEntregas(false)
   }
 
   function iniciarNuevo() {
@@ -498,19 +520,61 @@ function formatearFecha(fecha) {
     <div className="modulo">
       <h2>Pedidos</h2>
 
-      <div className="acciones-superiores">
-        <button className="btn-primario" onClick={iniciarNuevo}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+        <button className="btn-primario" onClick={iniciarNuevo} style={{ whiteSpace: 'nowrap' }}>
           + Nuevo Pedido
         </button>
-      </div>
 
-      <div className="campo-buscador">
         <input
           type="text"
           placeholder="🔎 Buscar por cliente..."
           value={textoBusqueda}
           onChange={(e) => setTextoBusqueda(e.target.value)}
+          style={{
+            flex: 1, minWidth: 160, padding: '9px 12px', border: '1px solid #E8D5CF',
+            borderRadius: 8, fontFamily: 'Poppins, sans-serif', fontSize: 13,
+          }}
         />
+
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+          <div className="campo">
+            <label style={{ fontSize: 11 }}>Entregas desde</label>
+            <input
+              type="date"
+              value={entregaDesde}
+              onChange={(e) => setEntregaDesde(e.target.value)}
+              style={{ padding: '7px 9px', fontSize: 12.5 }}
+            />
+          </div>
+          <div className="campo">
+            <label style={{ fontSize: 11 }}>Hasta</label>
+            <input
+              type="date"
+              value={entregaHasta}
+              onChange={(e) => setEntregaHasta(e.target.value)}
+              style={{ padding: '7px 9px', fontSize: 12.5 }}
+            />
+          </div>
+          <label
+            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#8A6A66', paddingBottom: 8, whiteSpace: 'nowrap' }}
+            title="Incluye las columnas de precio de venta y monto pendiente de cobro en el PDF"
+          >
+            <input
+              type="checkbox"
+              checked={incluirImportes}
+              onChange={(e) => setIncluirImportes(e.target.checked)}
+            />
+            Precio y pendiente
+          </label>
+          <button
+            className="btn-secundario"
+            onClick={generarEntregas}
+            disabled={generandoEntregas}
+            style={{ whiteSpace: 'nowrap', padding: '9px 14px' }}
+          >
+            {generandoEntregas ? 'Generando...' : '🧾 PDF entregas'}
+          </button>
+        </div>
       </div>
 
       {cargando && <p>Cargando...</p>}

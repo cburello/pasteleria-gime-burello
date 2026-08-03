@@ -33,7 +33,10 @@ function formatearMoneda(n) {
 // ------------------------------------------------------------
 export async function obtenerRecetasParaSeleccion(supabase) {
   const [{ data: recetas, error: errRecetas }, { data: productos, error: errProductos }] = await Promise.all([
-    supabase.from('recetas').select('id_receta, descripcion, cantidad_producto_final, fecha_inicio, fecha_fin').order('descripcion'),
+    supabase
+      .from('recetas')
+      .select('id_receta, descripcion, cantidad_producto_final, fecha_inicio, fecha_fin, rendimientos(descripcion, cantidad_unidades)')
+      .order('descripcion'),
     supabase.from('productos').select('id_receta, descripcion'),
   ])
 
@@ -192,7 +195,13 @@ export async function generarPdfRecetas(supabase, recetasSeleccionadas) {
     doc.setTextColor(74, 44, 42)
     doc.text(receta.descripcion, margenIzq, y)
 
-    const rindeTexto = 'Rinde ' + (receta.cantidad_producto_final ?? '—')
+    const rendimientosReceta = (receta.rendimientos && receta.rendimientos.length > 0)
+      ? receta.rendimientos
+      : (receta.cantidad_producto_final ? [{ descripcion: `${receta.cantidad_producto_final} unidad(es)`, cantidad_unidades: receta.cantidad_producto_final }] : [])
+
+    const rindeTexto = rendimientosReceta.length > 0
+      ? 'Rinde: ' + rendimientosReceta.map((r) => r.descripcion).join(' · ')
+      : 'Rinde —'
     doc.setFontSize(8.5)
     doc.setTextColor(212, 98, 74)
     doc.text(rindeTexto, anchoPagina - margenDer, y, { align: 'right' })
@@ -252,10 +261,10 @@ export async function generarPdfRecetas(supabase, recetasSeleccionadas) {
     // Totales, como una cajita alineada a la derecha (igual que el mockup)
     const cajaAncho = 78
     const cajaX = anchoPagina - margenDer - cajaAncho
-    const costoPorUnidad = (!algunSinCosto && receta.cantidad_producto_final)
-      ? total / parseFloat(receta.cantidad_producto_final)
-      : null
-    const cajaAlto = algunSinCosto ? 14 : (costoPorUnidad !== null ? 16 : 10)
+    const rendsConCosto = (!algunSinCosto && total > 0)
+      ? rendimientosReceta.filter((r) => parseFloat(r.cantidad_unidades) > 0)
+      : []
+    const cajaAlto = algunSinCosto ? 14 : (rendsConCosto.length > 0 ? 11.5 + rendsConCosto.length * 4.5 : 10)
 
     doc.setFillColor(255, 245, 242)
     doc.setDrawColor(232, 118, 92)
@@ -280,19 +289,28 @@ export async function generarPdfRecetas(supabase, recetasSeleccionadas) {
       doc.setTextColor(212, 98, 74)
       doc.text('$' + formatearMoneda(total), cajaX + cajaAncho - 4, y + 5.5, { align: 'right' })
 
-      if (costoPorUnidad !== null) {
+      if (rendsConCosto.length > 0) {
         doc.setDrawColor(240, 218, 211)
         doc.setLineWidth(0.2)
         doc.line(cajaX + 4, y + 8.5, cajaX + cajaAncho - 4, y + 8.5)
 
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(7.5)
-        doc.setTextColor(138, 106, 102)
-        doc.text('Costo por unidad producida', cajaX + 4, y + 13)
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(8.5)
-        doc.setTextColor(91, 33, 145)
-        doc.text('$' + formatearMoneda(costoPorUnidad), cajaX + cajaAncho - 4, y + 13, { align: 'right' })
+        let yLinea = y + 13
+        for (const rend of rendsConCosto) {
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(7)
+          doc.setTextColor(138, 106, 102)
+          doc.text(rend.descripcion, cajaX + 4, yLinea)
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(8)
+          doc.setTextColor(91, 33, 145)
+          doc.text(
+            '$' + formatearMoneda(total / parseFloat(rend.cantidad_unidades)) + ' c/u',
+            cajaX + cajaAncho - 4,
+            yLinea,
+            { align: 'right' }
+          )
+          yLinea += 4.5
+        }
       }
     }
 

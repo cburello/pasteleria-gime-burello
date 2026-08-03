@@ -67,7 +67,7 @@ function AnalisisPrecios() {
 
   const [textoBusqueda, setTextoBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('todos')
-  const [umbral, setUmbral] = useState('10')
+  const [umbral, setUmbral] = useState('150')
 
   const hoy = fechaLocalHoy()
 
@@ -91,7 +91,10 @@ function AnalisisPrecios() {
       { data: productos, error: errProductos },
       { data: precios, error: errPrecios },
     ] = await Promise.all([
-      supabase.from('productos').select('id_producto, descripcion, id_receta, coeficiente_ganancia').order('descripcion'),
+      supabase
+        .from('productos')
+        .select('id_producto, descripcion, id_receta, coeficiente_ganancia, id_rendimiento, rendimientos(cantidad_unidades, descripcion)')
+        .order('descripcion'),
       supabase.from('precios').select('*').lte('fecha_inicio', hoy).gte('fecha_fin', hoy),
     ])
 
@@ -159,25 +162,47 @@ function AnalisisPrecios() {
     const recetaPorId = new Map((recetas || []).map((r) => [r.id_receta, r]))
     const precioPorProducto = new Map((precios || []).map((p) => [p.id_producto, p]))
 
-    function calcularTeorico(producto) {
-      if (!producto.id_receta) return null
+    function calcularCostos(producto) {
+      const sinDato = { costoUnidad: null, teorico: null, ingredientesSinCosto: 0 }
+      if (!producto.id_receta) return sinDato
+      // El rinde sale del rendimiento del producto; si es un producto viejo
+      // sin rendimiento asignado, se usa el rinde histórico de la receta.
       const receta = recetaPorId.get(producto.id_receta)
-      if (!receta || !receta.cantidad_producto_final) return null
+      const unidades = producto.rendimientos?.cantidad_unidades
+        ? parseFloat(producto.rendimientos.cantidad_unidades)
+        : receta?.cantidad_producto_final
+          ? parseFloat(receta.cantidad_producto_final)
+          : null
+      if (!receta || !unidades || unidades <= 0) return sinDato
       const detalle = detallesPorReceta.get(producto.id_receta) || []
-      if (detalle.length === 0) return null
+      if (detalle.length === 0) return sinDato
 
+      // Igual que el ABM de Productos: los ingredientes sin costo vigente se saltean
+      // (el costo queda parcial), pero acá además se cuentan para avisarlo en pantalla.
       let total = 0
+      let usados = 0
+      let faltantes = 0
       for (const ing of detalle) {
         const costo = costoPorMateriaPrima.get(ing.id_materia_prima)
-        if (!costo) return null
-        const cantidadPresentacion = extraerCantidadPresentacion(costo.presentacion)
-        if (!cantidadPresentacion || cantidadPresentacion <= 0) return null
+        const cantidadPresentacion = costo ? extraerCantidadPresentacion(costo.presentacion) : null
+        if (!costo || !cantidadPresentacion || cantidadPresentacion <= 0) {
+          faltantes++
+          continue
+        }
         const precioUnitario = parseFloat(costo.precio) / cantidadPresentacion
         total += precioUnitario * parseFloat(ing.cantidad)
+        usados++
       }
 
-      const costoPorUnidad = total / receta.cantidad_producto_final
-      return costoPorUnidad * parseFloat(producto.coeficiente_ganancia || 0)
+      if (usados === 0) return sinDato
+      const costoUnidad = total / unidades
+      // Un costo ínfimo (receta mal cargada) genera porcentajes absurdos al dividir: se trata como sin costo.
+      if (costoUnidad <= 0.01) return sinDato
+      return {
+        costoUnidad,
+        teorico: costoUnidad * parseFloat(producto.coeficiente_ganancia || 0),
+        ingredientesSinCosto: faltantes,
+      }
     }
 
     const filasArmadas = (productos || []).map((p) => {
@@ -185,7 +210,7 @@ function AnalisisPrecios() {
       return {
         id_producto: p.id_producto,
         descripcion: p.descripcion,
-        teorico: calcularTeorico(p),
+        ...calcularCostos(p),
         precioVigente,
         minoristaActual: precioVigente ? parseFloat(precioVigente.precio_venta) : null,
         mayoristaActual: precioVigente?.precio_mayorista ? parseFloat(precioVigente.precio_mayorista) : null,
@@ -198,32 +223,39 @@ function AnalisisPrecios() {
     setCargando(false)
   }
 
-  function delta(actual, teorico) {
-    if (actual === null || actual === undefined || teorico === null || teorico === 0) return null
-    return ((actual - teorico) / teorico) * 100
+  // % de ganancia sobre el costo por unidad: (precio − costo) / costo
+  function ganancia(precio, costoUnidad) {
+    if (precio === null || precio === undefined || isNaN(precio) || costoUnidad === null || costoUnidad <= 0) return null
+    return ((precio - costoUnidad) / costoUnidad) * 100
+  }
+
+  // El valor que se está editando en pantalla pisa al guardado, así los chips reaccionan en vivo.
+  function valorEfectivo(nuevoStr, actual) {
+    if (nuevoStr !== '' && !isNaN(parseFloat(nuevoStr))) return parseFloat(nuevoStr)
+    return actual
   }
 
   function estadoFila(f, umbralNum) {
-    if (f.minoristaActual === null) return 'sin-precio'
-    if (f.teorico === null) return 'neutro'
-    const d = delta(f.minoristaActual, f.teorico)
-    if (d !== null && d < -umbralNum) return 'riesgo'
+    const minorista = valorEfectivo(f.minoristaNuevo, f.minoristaActual)
+    if (minorista === null) return 'sin-precio'
+    if (f.costoUnidad === null) return 'neutro'
+    const g = ganancia(minorista, f.costoUnidad)
+    if (g !== null && g < umbralNum) return 'riesgo'
     return 'ok'
   }
 
   const umbralNum = (() => {
     const v = parseFloat(umbral)
-    return isNaN(v) || v <= 0 ? 10 : v
+    return isNaN(v) || v <= 0 ? 150 : v
   })()
 
-  function chipDeFila(f) {
-    const est = estadoFila(f, umbralNum)
-    if (est === 'sin-precio') return <Chip estado="neutro" texto="Sin precio cargado" />
-    if (est === 'neutro') return <Chip estado="neutro" texto="Sin costo" />
-    const d = delta(f.minoristaActual, f.teorico)
-    if (est === 'riesgo') return <Chip estado="riesgo" texto={`▼ ${d.toFixed(0)}% vs teórico`} />
-    const signo = d > 0 ? '+' : ''
-    return <Chip estado="ok" texto={`${signo}${d.toFixed(0)}% vs teórico`} />
+  function chipGanancia(f, nuevoStr, actual, esMinorista) {
+    const precio = valorEfectivo(nuevoStr, actual)
+    if (precio === null) return esMinorista ? <Chip estado="neutro" texto="Sin precio cargado" /> : null
+    if (f.costoUnidad === null) return esMinorista ? <Chip estado="neutro" texto="Sin costo" /> : null
+    const g = ganancia(precio, f.costoUnidad)
+    if (g < umbralNum) return <Chip estado="riesgo" texto={`▼ ${g.toFixed(0)}% s/ costo`} />
+    return <Chip estado="ok" texto={`+${g.toFixed(0)}% s/ costo`} />
   }
 
   function editarFila(idProducto, campo, valor) {
@@ -350,9 +382,9 @@ function AnalisisPrecios() {
       <h2>Análisis de Precios</h2>
 
       <p className="ayuda-vigencia">
-        💡 Compara el precio teórico (calculado hoy en base al costo vigente de cada receta) contra el precio
-        minorista y mayorista realmente cargados. Editá los valores y presioná "Aplicar cambios" para guardarlos
-        con vigencia desde hoy — nada se guarda antes de eso.
+        💡 Muestra el costo por unidad de cada receta (calculado hoy con los costos vigentes) y el % de ganancia
+        de los precios minorista y mayorista sobre ese costo. "Por debajo" = ganancia menor a la mínima definida.
+        Editá los valores y presioná "Aplicar cambios" para guardarlos con vigencia desde hoy — nada se guarda antes de eso.
       </p>
 
       {!cargando && !error && (
@@ -361,7 +393,7 @@ function AnalisisPrecios() {
             <strong>{conteoRiesgo}</strong> por debajo
           </span>
           <span className="stat-chip" style={{ color: '#2E7D32' }}>
-            <strong>{conteoOk}</strong> alineados
+            <strong>{conteoOk}</strong> con margen
           </span>
           <span className="stat-chip" style={{ color: '#8A6A66' }}>
             <strong>{conteoSinDato}</strong> sin costo o precio
@@ -374,8 +406,8 @@ function AnalisisPrecios() {
 
       {!cargando && conteoRiesgo > 0 && (
         <div className="aviso-similar">
-          ⚠️ {conteoRiesgo} producto(s) tienen un precio minorista más de {umbralNum}% por debajo de su precio
-          teórico — están perdiendo margen respecto al costo actual de sus ingredientes.
+          ⚠️ {conteoRiesgo} producto(s) tienen una ganancia minorista menor al {umbralNum}% sobre el costo
+          actual de su receta — revisá si conviene actualizar el precio.
         </div>
       )}
 
@@ -396,7 +428,7 @@ function AnalisisPrecios() {
               {[
                 { id: 'todos', label: 'Todos' },
                 { id: 'riesgo', label: 'Por debajo' },
-                { id: 'ok', label: 'Alineados' },
+                { id: 'ok', label: 'Con margen' },
               ].map((op) => (
                 <button
                   key={op.id}
@@ -415,15 +447,15 @@ function AnalisisPrecios() {
               ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#8A6A66' }}>
-              <span>Umbral</span>
+              <span>Ganancia mín.</span>
               <input
                 type="number"
                 min="1"
-                max="100"
+                max="10000"
                 step="1"
                 value={umbral}
                 onChange={(e) => setUmbral(e.target.value)}
-                style={{ width: '46px', minWidth: '46px', textAlign: 'center', padding: '7px 6px', fontWeight: 600 }}
+                style={{ width: '58px', minWidth: '58px', textAlign: 'center', padding: '7px 6px', fontWeight: 600 }}
               />
               <span>%</span>
             </div>
@@ -454,7 +486,7 @@ function AnalisisPrecios() {
               <tr>
                 <th>ID</th>
                 <th>Producto</th>
-                <th>Precio teórico al {formatearFechaDDMMYYYY(hoy)}</th>
+                <th>Costo de unidad al {formatearFechaDDMMYYYY(hoy)}</th>
                 <th style={{ backgroundColor: '#FBE4DD', color: '#993C1D' }}>Precio minorista</th>
                 <th style={{ backgroundColor: '#EDE9FE', color: '#5B21B6' }}>Precio mayorista</th>
               </tr>
@@ -468,9 +500,21 @@ function AnalisisPrecios() {
                   <td style={{ color: '#8A6A66', fontSize: '12.5px' }}>#{f.id_producto}</td>
                   <td><strong>{f.descripcion}</strong></td>
                   <td>
-                    {f.teorico === null
-                      ? <span style={{ color: '#8A6A66', fontStyle: 'italic', fontSize: '12.5px' }}>No se pudo calcular (receta sin costos vigentes)</span>
-                      : <span style={{ fontWeight: 600 }}>${formatearMoneda(f.teorico)}</span>}
+                    {f.costoUnidad === null ? (
+                      <span style={{ color: '#8A6A66', fontStyle: 'italic', fontSize: '12.5px' }}>No se pudo calcular (receta sin costos vigentes)</span>
+                    ) : (
+                      <>
+                        <span style={{ fontWeight: 600 }}>${formatearMoneda(f.costoUnidad)}</span>
+                        {f.ingredientesSinCosto > 0 && (
+                          <span
+                            style={{ display: 'block', fontSize: '11px', color: '#8A6D3B' }}
+                            title="El costo es parcial: esos ingredientes no suman porque no tienen un costo vigente cargado en Materias Primas."
+                          >
+                            ⚠️ {f.ingredientesSinCosto} ingrediente(s) sin costo vigente
+                          </span>
+                        )}
+                      </>
+                    )}
                   </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -482,18 +526,21 @@ function AnalisisPrecios() {
                         onChange={(e) => editarFila(f.id_producto, 'minoristaNuevo', e.target.value)}
                         style={{ width: '96px', padding: '6px 8px', borderRadius: '7px', fontWeight: 600 }}
                       />
-                      {chipDeFila(f)}
+                      {chipGanancia(f, f.minoristaNuevo, f.minoristaActual, true)}
                     </div>
                   </td>
                   <td>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="Sin cargar"
-                      value={f.mayoristaNuevo}
-                      onChange={(e) => editarFila(f.id_producto, 'mayoristaNuevo', e.target.value)}
-                      style={{ width: '96px', padding: '6px 8px', borderRadius: '7px', fontWeight: 600 }}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Sin cargar"
+                        value={f.mayoristaNuevo}
+                        onChange={(e) => editarFila(f.id_producto, 'mayoristaNuevo', e.target.value)}
+                        style={{ width: '96px', padding: '6px 8px', borderRadius: '7px', fontWeight: 600 }}
+                      />
+                      {chipGanancia(f, f.mayoristaNuevo, f.mayoristaActual, false)}
+                    </div>
                   </td>
                 </tr>
               ))}

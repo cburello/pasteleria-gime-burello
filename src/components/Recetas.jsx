@@ -38,7 +38,7 @@ function Recetas() {
     setError(null)
     const { data, error } = await supabase
       .from('recetas')
-      .select('*')
+      .select('*, rendimientos(id_rendimiento, descripcion, cantidad_unidades)')
       .order('id_receta', { ascending: false })
 
     if (error) {
@@ -53,7 +53,6 @@ function Recetas() {
     setRecetaActual({
       id_receta: null,
       descripcion: '',
-      cantidad_producto_final: 1,
       fecha_inicio: new Date().toISOString().slice(0, 10),
       fecha_fin: '3000-12-31',
     })
@@ -76,6 +75,17 @@ function Recetas() {
 
     if (errorDetalle) {
       mostrarToast('Error al eliminar ingredientes de la receta: ' + errorDetalle.message, 'error')
+      return
+    }
+
+    // Los rendimientos usados por productos bloquean el borrado (FK): es la protección buscada.
+    const { error: errorRendimientos } = await supabase
+      .from('rendimientos')
+      .delete()
+      .eq('id_receta', id)
+
+    if (errorRendimientos) {
+      mostrarToast('No se puede eliminar la receta: alguno de sus rendimientos está usado por un producto.', 'error')
       return
     }
 
@@ -203,7 +213,7 @@ function Recetas() {
               <tr>
                 <th>ID</th>
                 <th>Descripción</th>
-                <th>Cant. Producto Final</th>
+                <th>Rendimientos</th>
                 <th>Vigencia</th>
                 <th>Acciones</th>
               </tr>
@@ -218,7 +228,11 @@ function Recetas() {
                 <tr key={r.id_receta}>
                   <td>{r.id_receta}</td>
                   <td>{r.descripcion}</td>
-                  <td>{r.cantidad_producto_final}</td>
+                  <td>
+                    {(r.rendimientos || []).length === 0
+                      ? <span style={{ color: '#C0392B', fontSize: '12px' }}>Sin rendimientos</span>
+                      : (r.rendimientos || []).map((rd) => rd.descripcion).join(' · ')}
+                  </td>
                   <td>
                     {formatearFecha(r.fecha_inicio)} —{' '}
                     {r.fecha_fin?.slice(0, 10) === '3000-12-31' ? 'Indefinida' : formatearFecha(r.fecha_fin)}
@@ -328,7 +342,6 @@ function Recetas() {
 function DetalleReceta({ receta, recetasExistentes, onVolver }) {
   const { mostrarToast, confirmar } = useNotificaciones()
   const [descripcion, setDescripcion] = useState(receta.descripcion)
-  const [cantidadFinal, setCantidadFinal] = useState(receta.cantidad_producto_final)
   const [fechaInicio, setFechaInicio] = useState(receta.fecha_inicio?.slice(0, 10) || '')
   const [fechaFin, setFechaFin] = useState(receta.fecha_fin?.slice(0, 10) || '3000-12-31')
   const [guardando, setGuardando] = useState(false)
@@ -348,10 +361,17 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
   const [costoTotal, setCostoTotal] = useState(0)
   const [calculandoCosto, setCalculandoCosto] = useState(false)
 
+  const [rendimientos, setRendimientos] = useState([])
+  const [descripcionRend, setDescripcionRend] = useState('')
+  const [unidadesRend, setUnidadesRend] = useState('')
+  const [editandoRendId, setEditandoRendId] = useState(null)
+  const [guardandoRend, setGuardandoRend] = useState(false)
+
   useEffect(() => {
     cargarMateriasPrimas()
     if (idRecetaActual) {
       cargarIngredientes()
+      cargarRendimientos()
     } else {
       setCargandoIngredientes(false)
     }
@@ -451,6 +471,83 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
     setCalculandoCosto(false)
   }
 
+  async function cargarRendimientos(id = idRecetaActual) {
+    const { data, error } = await supabase
+      .from('rendimientos')
+      .select('*')
+      .eq('id_receta', id)
+      .order('cantidad_unidades', { ascending: true })
+
+    if (!error) setRendimientos(data || [])
+  }
+
+  function iniciarEdicionRendimiento(rend) {
+    setEditandoRendId(rend.id_rendimiento)
+    setDescripcionRend(rend.descripcion)
+    setUnidadesRend(String(rend.cantidad_unidades))
+  }
+
+  function cancelarEdicionRendimiento() {
+    setEditandoRendId(null)
+    setDescripcionRend('')
+    setUnidadesRend('')
+  }
+
+  async function guardarRendimiento() {
+    const unidades = parseFloat(unidadesRend)
+    if (!descripcionRend.trim() || isNaN(unidades) || unidades <= 0) {
+      mostrarToast('Cargá la descripción del rendimiento y una cantidad de unidades mayor a cero', 'error')
+      return
+    }
+
+    setGuardandoRend(true)
+
+    if (editandoRendId) {
+      const { error } = await supabase
+        .from('rendimientos')
+        .update({ descripcion: descripcionRend.trim(), cantidad_unidades: unidades })
+        .eq('id_rendimiento', editandoRendId)
+      if (error) mostrarToast('Error al actualizar el rendimiento: ' + error.message, 'error')
+    } else {
+      const { error } = await supabase
+        .from('rendimientos')
+        .insert({ id_receta: idRecetaActual, descripcion: descripcionRend.trim(), cantidad_unidades: unidades })
+      if (error) mostrarToast('Error al agregar el rendimiento: ' + error.message, 'error')
+    }
+
+    setGuardandoRend(false)
+    cancelarEdicionRendimiento()
+    cargarRendimientos()
+  }
+
+  async function eliminarRendimiento(idRendimiento) {
+    const { data: productosUsando } = await supabase
+      .from('productos')
+      .select('descripcion')
+      .eq('id_rendimiento', idRendimiento)
+
+    if (productosUsando && productosUsando.length > 0) {
+      mostrarToast(
+        'No se puede eliminar: este rendimiento lo usan ' +
+          productosUsando.length +
+          ' producto(s): ' +
+          productosUsando.map((p) => p.descripcion).join(', '),
+        'error'
+      )
+      return
+    }
+
+    const confirmado = await confirmar('¿Eliminar este rendimiento?')
+    if (!confirmado) return
+
+    const { error } = await supabase.from('rendimientos').delete().eq('id_rendimiento', idRendimiento)
+    if (error) {
+      mostrarToast('Error al eliminar el rendimiento: ' + error.message, 'error')
+    } else {
+      cargarRendimientos()
+    }
+  }
+
   const materiasFiltradas = textoBuscarMateria.trim()
     ? materiasPrimas.filter((m) => normalizar(m.descripcion).includes(normalizar(textoBuscarMateria)))
     : []
@@ -470,8 +567,8 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
   }
 
   async function guardarCabecera() {
-    if (!descripcion.trim() || !cantidadFinal || !fechaInicio) {
-      mostrarToast('Descripción, cantidad de producto final y fecha de inicio son obligatorios', 'error')
+    if (!descripcion.trim() || !fechaInicio) {
+      mostrarToast('Descripción y fecha de inicio son obligatorios', 'error')
       return null
     }
 
@@ -516,7 +613,6 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
 
     const registro = {
       descripcion,
-      cantidad_producto_final: parseFloat(cantidadFinal),
       fecha_inicio: fechaInicio,
       fecha_fin: finEfectivo,
     }
@@ -538,6 +634,25 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
         return null
       }
       idResultante = data.id_receta
+
+      // Si esta receta nueva es una versión de otra (misma descripción, vigencia
+      // ajustada), copiarle los rendimientos de la versión anterior más reciente
+      // para no tener que recargarlos a mano.
+      if (ajustables.length > 0) {
+        const anterior = ajustables.reduce((a, b) =>
+          new Date(a.fecha_inicio) > new Date(b.fecha_inicio) ? a : b
+        )
+        const { data: rendsAnteriores } = await supabase
+          .from('rendimientos')
+          .select('descripcion, cantidad_unidades')
+          .eq('id_receta', anterior.id_receta)
+
+        if (rendsAnteriores && rendsAnteriores.length > 0) {
+          await supabase.from('rendimientos').insert(
+            rendsAnteriores.map((r) => ({ ...r, id_receta: idResultante }))
+          )
+        }
+      }
     }
 
     setGuardando(false)
@@ -553,6 +668,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
         setIdRecetaActual(id)
         setCargandoIngredientes(true)
         cargarIngredientes()
+        cargarRendimientos(id)
       }
     }
   }
@@ -649,16 +765,6 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
               />
             </div>
             <div className="campo">
-              <label>Cantidad producto final</label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Ej: 1 o 20"
-                value={cantidadFinal}
-                onChange={(e) => setCantidadFinal(e.target.value)}
-              />
-            </div>
-            <div className="campo">
               <label>Fecha inicio</label>
               <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </div>
@@ -684,10 +790,7 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
                 <p style={{ fontSize: 12.5, color: '#8A6A66' }}>Calculando costo...</p>
               ) : (
                 <div className="simulador-compacto">
-                  <div className="sim-fila"><span>Total receta</span><span>${costoTotal.toFixed(2)}</span></div>
-                  {cantidadFinal > 0 && (
-                    <div className="sim-fila sim-total"><span>Por unidad</span><span>${(costoTotal / cantidadFinal).toFixed(2)}</span></div>
-                  )}
+                  <div className="sim-fila sim-total"><span>Total receta</span><span>${costoTotal.toFixed(2)}</span></div>
                 </div>
               )}
             </>
@@ -697,6 +800,71 @@ function DetalleReceta({ receta, recetasExistentes, onVolver }) {
         <div className="detalle-principal">
           {idRecetaActual ? (
             <>
+              <div className="rotulo-grupo">Rendimientos</div>
+              {rendimientos.length === 0 && (
+                <p className="aviso-similar" style={{ fontSize: 12, padding: '7px 12px', marginBottom: 8 }}>
+                  ⚠️ Cargá al menos un rendimiento para poder crear productos con esta receta.
+                </p>
+              )}
+              <div className="formulario" style={{ marginBottom: 10 }}>
+                <input
+                  type="text"
+                  placeholder="Descripción (ej: 2 unidades de 22 cm)"
+                  value={descripcionRend}
+                  onChange={(e) => setDescripcionRend(e.target.value)}
+                  style={{ flex: 2 }}
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Unidades"
+                  value={unidadesRend}
+                  onChange={(e) => setUnidadesRend(e.target.value)}
+                  style={{ maxWidth: '110px' }}
+                />
+                <button className="btn-primario" onClick={guardarRendimiento} disabled={guardandoRend}>
+                  {guardandoRend ? '...' : editandoRendId ? 'Actualizar' : '+ Agregar'}
+                </button>
+                {editandoRendId && (
+                  <button className="btn-secundario" type="button" onClick={cancelarEdicionRendimiento}>
+                    Cancelar
+                  </button>
+                )}
+              </div>
+              {rendimientos.length > 0 && (
+                <div className="tabla-wrapper" style={{ marginBottom: 14 }}>
+                  <table className="tabla tabla-compacta">
+                    <thead>
+                      <tr>
+                        <th>Descripción</th>
+                        <th>Unidades</th>
+                        <th>Costo por unidad</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rendimientos.map((rend) => (
+                        <tr key={rend.id_rendimiento}>
+                          <td>{rend.descripcion}</td>
+                          <td>{parseFloat(rend.cantidad_unidades)}</td>
+                          <td>
+                            {costoTotal > 0
+                              ? `$${(costoTotal / parseFloat(rend.cantidad_unidades)).toFixed(2)}`
+                              : '—'}
+                          </td>
+                          <td>
+                            <button className="icono-accion" title="Editar" onClick={() => iniciarEdicionRendimiento(rend)}>✏️</button>
+                            <button className="icono-accion" title="Eliminar" onClick={() => eliminarRendimiento(rend.id_rendimiento)}>🗑️</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <hr className="separador" style={{ margin: '4px 0 12px' }} />
+
               <div className="rotulo-grupo">Ingredientes</div>
               <div className="formulario">
                 <div style={{ position: 'relative', flex: 2 }}>

@@ -42,7 +42,7 @@ function Productos() {
     setError(null)
     const { data, error } = await supabase
       .from('productos')
-      .select('*, recetas(descripcion, cantidad_producto_final)')
+      .select('*, recetas(descripcion), rendimientos(descripcion, cantidad_unidades)')
       .order('id_producto', { ascending: false })
 
     if (error) {
@@ -58,7 +58,7 @@ function Productos() {
       id_producto: null,
       id_receta: null,
       descripcion: '',
-      coeficiente_ganancia: 1.3,
+      coeficiente_ganancia: 3,
     })
     setVista('detalle')
   }
@@ -153,7 +153,12 @@ function Productos() {
                 <tr key={p.id_producto}>
                   <td>{p.id_producto}</td>
                   <td>{p.descripcion}</td>
-                  <td>{p.recetas?.descripcion || '—'}</td>
+                  <td>
+                    {p.recetas?.descripcion || '—'}
+                    {p.rendimientos?.descripcion && (
+                      <span style={{ color: '#A68E89', fontSize: '11.5px' }}> · {p.rendimientos.descripcion}</span>
+                    )}
+                  </td>
                   <td>{p.coeficiente_ganancia}</td>
                   <td style={{ textAlign: 'center' }} title={p.visible_web ? 'Publicado en la web' : 'No publicado'}>
                     {p.visible_web ? '👁️' : '—'}
@@ -193,9 +198,10 @@ function DetalleProducto({ producto, onVolver }) {
   const [secciones, setSecciones] = useState([])
   const [subiendoImagen, setSubiendoImagen] = useState(false)
 
-  const [recetas, setRecetas] = useState([])
+  const [idRendimiento, setIdRendimiento] = useState(producto.id_rendimiento)
+  const [combinaciones, setCombinaciones] = useState([])
   const [textoBuscarReceta, setTextoBuscarReceta] = useState('')
-  const [recetaSeleccionada, setRecetaSeleccionada] = useState(null)
+  const [combinacionSeleccionada, setCombinacionSeleccionada] = useState(null)
 
   const [costoReceta, setCostoReceta] = useState(null)
   const [calculandoCosto, setCalculandoCosto] = useState(false)
@@ -255,14 +261,39 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   }
 
   async function cargarRecetas() {
-    const { data } = await supabase.from('recetas').select('*').order('descripcion')
-    setRecetas(data || [])
+    const { data } = await supabase
+      .from('recetas')
+      .select('id_receta, descripcion, rendimientos(id_rendimiento, descripcion, cantidad_unidades)')
+      .order('descripcion')
 
-    if (producto.id_receta) {
-      const recetaActual = (data || []).find((r) => r.id_receta === producto.id_receta)
-      if (recetaActual) {
-        setRecetaSeleccionada(recetaActual)
-        setTextoBuscarReceta(recetaActual.descripcion)
+    // Cada opción del selector es una combinación receta · rendimiento
+    const lista = []
+    for (const r of data || []) {
+      for (const rend of r.rendimientos || []) {
+        lista.push({
+          id_receta: r.id_receta,
+          id_rendimiento: rend.id_rendimiento,
+          texto: `${r.descripcion} · ${rend.descripcion}`,
+          unidades: parseFloat(rend.cantidad_unidades),
+        })
+      }
+    }
+    lista.sort((a, b) => a.texto.localeCompare(b.texto))
+    setCombinaciones(lista)
+
+    if (producto.id_rendimiento) {
+      const actual = lista.find((c) => c.id_rendimiento === producto.id_rendimiento)
+      if (actual) {
+        setCombinacionSeleccionada(actual)
+        setTextoBuscarReceta(actual.texto)
+      }
+    } else if (producto.id_receta) {
+      // Producto viejo sin rendimiento asignado: ofrecer el primero de su receta
+      const porReceta = lista.find((c) => c.id_receta === producto.id_receta)
+      if (porReceta) {
+        setCombinacionSeleccionada(porReceta)
+        setIdRendimiento(porReceta.id_rendimiento)
+        setTextoBuscarReceta(porReceta.texto)
       }
     }
   }
@@ -349,27 +380,42 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     setCalculandoCosto(false)
   }
 
-  const recetasFiltradas = textoBuscarReceta.trim()
-    ? recetas.filter((r) => normalizar(r.descripcion).includes(normalizar(textoBuscarReceta)))
+  const combinacionesFiltradas = textoBuscarReceta.trim()
+    ? combinaciones.filter((c) => normalizar(c.texto).includes(normalizar(textoBuscarReceta)))
     : []
 
-  function seleccionarReceta(receta) {
-    setRecetaSeleccionada(receta)
-    setIdReceta(receta.id_receta)
-    setTextoBuscarReceta(receta.descripcion)
+  function seleccionarCombinacion(combinacion) {
+    setCombinacionSeleccionada(combinacion)
+    setIdReceta(combinacion.id_receta)
+    setIdRendimiento(combinacion.id_rendimiento)
+    setTextoBuscarReceta(combinacion.texto)
   }
 
   const costoPorUnidad =
-    costoReceta !== null && recetaSeleccionada?.cantidad_producto_final
-      ? costoReceta / recetaSeleccionada.cantidad_producto_final
+    costoReceta !== null && combinacionSeleccionada?.unidades > 0
+      ? costoReceta / combinacionSeleccionada.unidades
       : null
 
   const precioTeoricoSimulado =
     costoPorUnidad !== null ? costoPorUnidad * parseFloat(coeficiente || 0) : null
 
+  // % de ganancia sobre el costo por unidad de la receta: (precio − costo) / costo
+  function gananciaSobreCosto(precioStr) {
+    const precio = parseFloat(precioStr)
+    if (isNaN(precio) || precio <= 0 || costoPorUnidad === null || costoPorUnidad <= 0) return null
+    return ((precio - costoPorUnidad) / costoPorUnidad) * 100
+  }
+
+  function formatearPorcentaje(valor) {
+    return new Intl.NumberFormat('es-AR', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(valor)
+  }
+
   async function guardarCabecera() {
-    if (!descripcion.trim() || !idReceta || !coeficiente) {
-      mostrarToast('Descripción, receta y coeficiente de ganancia son obligatorios', 'error')
+    if (!descripcion.trim() || !idReceta || !idRendimiento || !coeficiente) {
+      mostrarToast('Descripción, receta·rendimiento y coeficiente de ganancia son obligatorios', 'error')
       return null
     }
 
@@ -378,6 +424,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
     const registro = {
       descripcion,
       id_receta: idReceta,
+      id_rendimiento: idRendimiento,
       coeficiente_ganancia: parseFloat(coeficiente),
       id_seccion: idSeccion || null,
       frase_venta: fraseVenta.trim() || null,
@@ -596,22 +643,23 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
             </div>
 
             <div className="campo" style={{ position: 'relative' }}>
-              <label>Receta</label>
+              <label>Receta y rendimiento</label>
               <input
                 type="text"
-                placeholder="🔎 Buscar receta..."
+                placeholder="🔎 Buscar receta o rendimiento..."
                 value={textoBuscarReceta}
                 onChange={(e) => {
                   setTextoBuscarReceta(e.target.value)
-                  setRecetaSeleccionada(null)
+                  setCombinacionSeleccionada(null)
                   setIdReceta(null)
+                  setIdRendimiento(null)
                 }}
               />
-              {textoBuscarReceta && !recetaSeleccionada && recetasFiltradas.length > 0 && (
+              {textoBuscarReceta && !combinacionSeleccionada && combinacionesFiltradas.length > 0 && (
                 <div className="dropdown-resultados">
-                  {recetasFiltradas.map((r) => (
-                    <div key={r.id_receta} className="dropdown-item" onClick={() => seleccionarReceta(r)}>
-                      {r.descripcion}
+                  {combinacionesFiltradas.map((c) => (
+                    <div key={c.id_rendimiento} className="dropdown-item" onClick={() => seleccionarCombinacion(c)}>
+                      {c.texto}
                     </div>
                   ))}
                 </div>
@@ -623,7 +671,7 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
               <input
                 type="number"
                 step="0.01"
-                placeholder="Ej: 1.30"
+                placeholder="Ej: 3"
                 value={coeficiente}
                 onChange={(e) => setCoeficiente(e.target.value)}
               />
@@ -642,6 +690,9 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
               {!calculandoCosto && costoReceta !== null && (
                 <div className="simulador-compacto">
                   <div className="sim-fila"><span>Costo receta</span><span>${formatearMoneda(costoReceta)}</span></div>
+                  {combinacionSeleccionada && (
+                    <div className="sim-fila"><span>Rendimiento</span><span>÷ {combinacionSeleccionada.unidades} u.</span></div>
+                  )}
                   <div className="sim-fila"><span>Costo unitario</span><span>${formatearMoneda(costoPorUnidad)}</span></div>
                   <div className="sim-fila"><span>Coeficiente</span><span>x{parseFloat(coeficiente || 0).toFixed(2)}</span></div>
                   <div className="sim-fila sim-total"><span>Precio teórico</span><span>${formatearMoneda(precioTeoricoSimulado)}</span></div>
@@ -706,6 +757,17 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
                         value={precioVentaManual}
                         onChange={(e) => setPrecioVentaManual(e.target.value)}
                       />
+                      {gananciaSobreCosto(precioVentaManual) !== null && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: gananciaSobreCosto(precioVentaManual) >= 0 ? '#2D6A35' : '#C0392B',
+                          }}
+                        >
+                          Ganancia: {formatearPorcentaje(gananciaSobreCosto(precioVentaManual))}% s/ costo unidad
+                        </span>
+                      )}
                     </div>
                     <div className="campo">
                       <label style={{ color: '#5B21B6' }}>Precio mayorista *</label>
@@ -717,6 +779,17 @@ const [anio, mes, dia] = fecha.slice(0, 10).split('-')
                         onChange={(e) => setPrecioMayoristaManual(e.target.value)}
                         style={{ background: '#fff', colorScheme: 'light', borderColor: '#C4B5FD' }}
                       />
+                      {gananciaSobreCosto(precioMayoristaManual) !== null && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: gananciaSobreCosto(precioMayoristaManual) >= 0 ? '#2D6A35' : '#C0392B',
+                          }}
+                        >
+                          Ganancia: {formatearPorcentaje(gananciaSobreCosto(precioMayoristaManual))}% s/ costo unidad
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="campo-acciones">

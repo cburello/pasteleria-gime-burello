@@ -334,20 +334,22 @@ function DetalleCombo({ combo, onVolver }) {
     const costoReceta = producto.id_receta ? await calcularCostoReceta(producto.id_receta) : null
     const precioVigente = await obtenerPrecioVigente(producto.id_producto)
 
-    let recetaInfo = null
-    if (producto.id_receta) {
+    // El rinde sale del rendimiento del producto; si es un producto viejo sin
+    // rendimiento asignado, se usa el rinde histórico de la receta.
+    let unidades = producto.rendimientos?.cantidad_unidades
+      ? parseFloat(producto.rendimientos.cantidad_unidades)
+      : null
+
+    if (!unidades && producto.id_receta) {
       const { data } = await supabase
         .from('recetas')
         .select('cantidad_producto_final')
         .eq('id_receta', producto.id_receta)
         .single()
-      recetaInfo = data
+      unidades = data?.cantidad_producto_final ? parseFloat(data.cantidad_producto_final) : null
     }
 
-    const costoPorUnidad =
-      costoReceta !== null && recetaInfo?.cantidad_producto_final
-        ? costoReceta / recetaInfo.cantidad_producto_final
-        : null
+    const costoPorUnidad = costoReceta !== null && unidades > 0 ? costoReceta / unidades : null
 
     const precioTeorico =
       costoPorUnidad !== null ? costoPorUnidad * parseFloat(producto.coeficiente_ganancia || 0) : null
@@ -363,7 +365,7 @@ function DetalleCombo({ combo, onVolver }) {
     setCargandoProductos(true)
     const { data, error } = await supabase
       .from('detalle_combo')
-      .select('*, productos(id_producto, descripcion, id_receta, coeficiente_ganancia)')
+      .select('*, productos(id_producto, descripcion, id_receta, coeficiente_ganancia, id_rendimiento, recetas(descripcion), rendimientos(descripcion, cantidad_unidades))')
       .eq('id_combo', idCombo)
 
     if (!error && data) {
@@ -663,7 +665,7 @@ function DetalleCombo({ combo, onVolver }) {
                         <tr>
                           <th>Producto</th>
                           <th>Cantidad</th>
-                          <th>Costo receta (u.)</th>
+                          <th>Costo unidad</th>
                           <th>Precio teórico</th>
                           <th>Precio venta</th>
                           <th>Subtotal</th>
@@ -678,7 +680,15 @@ function DetalleCombo({ combo, onVolver }) {
                         )}
                         {productosCombo.map((pc) => (
                           <tr key={pc.id_producto}>
-                            <td>{pc.productos?.descripcion}</td>
+                            <td>
+                              {pc.productos?.descripcion}
+                              {pc.productos?.recetas?.descripcion && (
+                                <span style={{ display: 'block', fontSize: '11px', color: '#A68E89' }}>
+                                  {pc.productos.recetas.descripcion}
+                                  {pc.productos.rendimientos?.descripcion ? ` · ${pc.productos.rendimientos.descripcion}` : ''}
+                                </span>
+                              )}
+                            </td>
                             <td>{pc.cantidad}</td>
                             <td>${formatearMoneda(pc.costo_receta)}</td>
                             <td>${formatearMoneda(pc.precio_teorico)}</td>
