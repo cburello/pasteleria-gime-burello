@@ -14,10 +14,12 @@ function Productos() {
   const [textoBusqueda, setTextoBusqueda] = useState('')
   const [secciones, setSecciones] = useState([])
   const [filtroRubro, setFiltroRubro] = useState('todos')
+  const [preciosVigentes, setPreciosVigentes] = useState({})
 
   useEffect(() => {
     cargarProductos()
     cargarSecciones()
+    cargarPreciosVigentes()
   }, [])
 
   async function cargarSecciones() {
@@ -35,6 +37,30 @@ function Productos() {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
+  }
+
+  function formatearMonedaLista(valor) {
+    if (valor === null || valor === undefined || isNaN(valor)) return '—'
+    return new Intl.NumberFormat('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(valor)
+  }
+
+  async function cargarPreciosVigentes() {
+    const hoy = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 10)
+    const { data } = await supabase
+      .from('precios')
+      .select('id_producto, precio_venta, precio_mayorista, fecha_inicio')
+      .lte('fecha_inicio', hoy)
+      .gte('fecha_fin', hoy)
+      .order('fecha_inicio', { ascending: false })
+
+    const mapa = {}
+    ;(data || []).forEach((fila) => {
+      if (!mapa[fila.id_producto]) mapa[fila.id_producto] = fila
+    })
+    setPreciosVigentes(mapa)
   }
 
   async function cargarProductos() {
@@ -98,6 +124,7 @@ function Productos() {
         onVolver={() => {
           setVista('lista')
           cargarProductos()
+          cargarPreciosVigentes()
         }}
       />
     )
@@ -140,13 +167,15 @@ function Productos() {
                 <th>Receta</th>
                 <th>Coef.</th>
                 <th title="Publicado en la web">Web</th>
+                <th style={{ textAlign: 'right' }}>Minorista</th>
+                <th style={{ textAlign: 'right' }}>Mayorista</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {productosFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan="6">No hay productos registrados.</td>
+                  <td colSpan="8">No hay productos registrados.</td>
                 </tr>
               )}
               {productosFiltrados.map((p) => (
@@ -162,6 +191,16 @@ function Productos() {
                   <td>{p.coeficiente_ganancia}</td>
                   <td style={{ textAlign: 'center' }} title={p.visible_web ? 'Publicado en la web' : 'No publicado'}>
                     {p.visible_web ? '👁️' : '—'}
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {preciosVigentes[p.id_producto]
+                      ? `$${formatearMonedaLista(preciosVigentes[p.id_producto].precio_venta)}`
+                      : <span style={{ color: '#993C1D', fontStyle: 'italic', fontSize: '11.5px' }}>Sin precio</span>}
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: '#534AB7' }}>
+                    {preciosVigentes[p.id_producto]?.precio_mayorista != null
+                      ? `$${formatearMonedaLista(preciosVigentes[p.id_producto].precio_mayorista)}`
+                      : <span style={{ color: '#A68E89' }}>—</span>}
                   </td>
                   <td>
                     <button className="icono-accion" title="Ver / Editar" onClick={() => abrirProducto(p)}>✏️</button>
