@@ -15,9 +15,11 @@ function clienteAdmin() {
 async function verificarSesion(admin, req) {
   const encabezado = req.headers.authorization || ''
   const token = encabezado.startsWith('Bearer ') ? encabezado.slice(7) : null
-  if (!token) return false
+  if (!token) return { ok: false, motivo: 'La app no envió el token de sesión.' }
   const { data, error } = await admin.auth.getUser(token)
-  return !error && !!data?.user
+  if (error) return { ok: false, motivo: error.message }
+  if (!data?.user) return { ok: false, motivo: 'El token es válido pero no corresponde a ningún usuario.' }
+  return { ok: true }
 }
 
 async function traerTablaCompleta(admin, tabla) {
@@ -59,9 +61,9 @@ export default async function handler(req, res) {
     return
   }
 
-  const autorizado = await verificarSesion(admin, req)
-  if (!autorizado) {
-    res.status(401).json({ error: 'No autorizado' })
+  const chequeoSesion = await verificarSesion(admin, req)
+  if (!chequeoSesion.ok) {
+    res.status(401).json({ error: 'No autorizado: ' + chequeoSesion.motivo })
     return
   }
 
