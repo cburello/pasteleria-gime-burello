@@ -1,19 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNotificaciones } from '../hooks/useNotificaciones'
-
-// Detecta mobile igual que en el resto de la app (768px)
-function useEsMobile() {
-  const [esMobile, setEsMobile] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  )
-  useEffect(() => {
-    function handler() { setEsMobile(window.innerWidth <= 768) }
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
-  }, [])
-  return esMobile
-}
+import { useEsMobile } from '../hooks/useEsMobile'
 
 const COL = {
   coral: '#E8765C', coralDark: '#D4624A', bg: '#FFF5F2', card: '#FFFFFF',

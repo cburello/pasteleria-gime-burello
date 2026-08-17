@@ -1,18 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-
-// Detecta mobile igual que en Pedidos (768px)
-function useEsMobile() {
-  const [esMobile, setEsMobile] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  )
-  useEffect(() => {
-    function handler() { setEsMobile(window.innerWidth <= 768) }
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
-  }, [])
-  return esMobile
-}
+import { useEsMobile } from '../hooks/useEsMobile'
 
 function MenuPrincipal({ paginaActual, onCambiarPagina }) {
   const esMobile = useEsMobile()

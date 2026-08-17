@@ -5,24 +5,7 @@ import autoTable from 'jspdf-autotable'
 import { LOGO_BASE64 } from '../lib/logoBase64'
 import { generarPdfPedidosEntrega } from '../lib/pedidosEntregaPdf'
 import { useNotificaciones } from '../hooks/useNotificaciones'
-
-// Detecta si la pantalla es de tamaño mobile (mismo breakpoint que App.css: 768px).
-// Se recalcula automáticamente si la ventana cambia de tamaño u orientación.
-function useEsMobile() {
-  const [esMobile, setEsMobile] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  )
-
-  useEffect(() => {
-    function manejarResize() {
-      setEsMobile(window.innerWidth <= 768)
-    }
-    window.addEventListener('resize', manejarResize)
-    return () => window.removeEventListener('resize', manejarResize)
-  }, [])
-
-  return esMobile
-}
+import { useEsMobile } from '../hooks/useEsMobile'
 
 function Pedidos({ idPedidoAbrir, onPedidoAbierto }) {
   const { mostrarToast, confirmar } = useNotificaciones()

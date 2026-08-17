@@ -646,7 +646,8 @@ margin-top: 16px;
 }
 
 .btn-cambiar-password,
-.btn-activar-biometria {
+.btn-activar-biometria,
+.btn-forzar-escritorio {
   flex-shrink: 0;
   padding: 9px 18px;
   background-color: transparent;
@@ -662,7 +663,8 @@ margin-top: 16px;
 }
 
 .btn-cambiar-password:hover,
-.btn-activar-biometria:hover {
+.btn-activar-biometria:hover,
+.btn-forzar-escritorio:hover {
   background-color: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.8);
 }
@@ -1382,6 +1384,11 @@ margin-top: 16px;
     font-size: 15px;
   }
 
+  .btn-forzar-escritorio {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
   .btn-cerrar-sesion {
     font-size: 12px;
     padding: 7px 12px;
@@ -1394,13 +1401,15 @@ margin-top: 16px;
 /* ============================================= */
 
 @media (max-width: 768px) {
-  /* Oculta el menú de navegación desktop en mobile */
-  .app-nav {
+  /* Oculta el menú de navegación desktop en mobile, salvo que se haya
+     forzado "ver como escritorio" desde el header */
+  .app-container:not(.forzado-escritorio) .app-nav {
     display: none;
   }
 
-  /* Espacio para que el contenido no quede tapado por la barra */
-  .app-content {
+  /* Espacio para que el contenido no quede tapado por la barra mobile
+     (no aplica si se forzó la vista de escritorio: ahí no hay barra fija) */
+  .app-container:not(.forzado-escritorio) .app-content {
     padding-bottom: 80px;
   }
 }
@@ -1717,7 +1726,8 @@ margin-top: 16px;
 }
 .app-header.compacto .btn-cerrar-sesion,
 .app-header.compacto .btn-cambiar-password,
-.app-header.compacto .btn-activar-biometria {
+.app-header.compacto .btn-activar-biometria,
+.app-header.compacto .btn-forzar-escritorio {
   padding: 5px 12px;
   font-size: 11.5px;
 }

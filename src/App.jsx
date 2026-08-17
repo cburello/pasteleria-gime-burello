@@ -27,24 +27,15 @@ import Secciones from './components/Secciones'
 import PedidosWeb from './components/PedidosWeb'
 import CaratulaWeb from './components/CaratulaWeb'
 import Presupuestos from './components/Presupuestos'
-
-function useEsMobile() {
-  const [esMobile, setEsMobile] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  )
-  useEffect(() => {
-    function handler() { setEsMobile(window.innerWidth <= 768) }
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
-  }, [])
-  return esMobile
-}
+import { useEsMobile, usePantallaMovil, useForzarEscritorio } from './hooks/useEsMobile'
 
 const ENTORNO = (import.meta.env.VITE_APP_ENV || 'produccion').trim().toLowerCase()
 const ES_PRUEBA = ENTORNO === 'prueba' || ENTORNO === 'staging' || ENTORNO === 'test'
 
 function App() {
   const esMobile = useEsMobile()
+  const pantallaMovil = usePantallaMovil()
+  const [forzarEscritorio, alternarForzarEscritorio] = useForzarEscritorio()
   const { mostrarToast } = useNotificaciones()
 const [sesion, setSesion] = useState(null)
   const [verificandoSesion, setVerificandoSesion] = useState(true)
@@ -147,7 +138,7 @@ const [sesion, setSesion] = useState(null)
   }
 
   return (
-    <div className="app-container">
+    <div className={`app-container${forzarEscritorio ? ' forzado-escritorio' : ''}`}>
 <header className="app-header compacto">
         <div className="app-header-marca">
           <img src={logo} alt="Gime Burello Pastelería" className="app-logo" />
@@ -161,6 +152,15 @@ const [sesion, setSesion] = useState(null)
           >
             {ES_PRUEBA ? '🧪 PRUEBA' : '🟢 PRODUCCIÓN'}
           </span>
+          {pantallaMovil && (
+            <button
+              className="btn-forzar-escritorio"
+              onClick={alternarForzarEscritorio}
+              title={forzarEscritorio ? 'Volver a la vista para celular' : 'Ver el sistema como en la computadora'}
+            >
+              {forzarEscritorio ? '📱 Móvil' : '🖥️ Escritorio'}
+            </button>
+          )}
           {puedeActivarBiometria && (
             <button
               className="btn-activar-biometria"
