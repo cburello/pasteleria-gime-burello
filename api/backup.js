@@ -3,21 +3,36 @@ import { createClient } from '@supabase/supabase-js'
 const TAMANO_PAGINA = 1000
 const BUCKET = 'backups'
 
-function clienteAdmin() {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-  const claveServicio = process.env.SUPABASE_SERVICE_ROLE_KEY
+function datosEntorno() {
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
+  const claveServicio = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  return { url, claveServicio }
+}
+
+// Descripcion segura (sin exponer el secreto) de que esta llegando al
+// servidor, para poder diagnosticar sin adivinar: el proyecto (parte de la
+// URL, no es secreto) y la forma de la clave (prefijo + longitud).
+function diagnosticoEntorno({ url, claveServicio }) {
+  const proyecto = url.replace(/^https?:\/\//, '').split('.')[0] || '(vacío)'
+  const clave = claveServicio
+    ? `${claveServicio.slice(0, 6)}…(${claveServicio.length} caracteres)`
+    : '(vacía)'
+  return `proyecto=${proyecto || '(no se pudo leer)'}, clave=${clave}`
+}
+
+function clienteAdmin({ url, claveServicio }) {
   if (!url || !claveServicio) {
     throw new Error('Faltan SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY en las variables de entorno del servidor.')
   }
   return createClient(url, claveServicio, { auth: { persistSession: false } })
 }
 
-async function verificarSesion(admin, req) {
+async function verificarSesion(admin, req, entorno) {
   const encabezado = req.headers.authorization || ''
   const token = encabezado.startsWith('Bearer ') ? encabezado.slice(7) : null
   if (!token) return { ok: false, motivo: 'La app no envió el token de sesión.' }
   const { data, error } = await admin.auth.getUser(token)
-  if (error) return { ok: false, motivo: error.message }
+  if (error) return { ok: false, motivo: `${error.message} [${diagnosticoEntorno(entorno)}]` }
   if (!data?.user) return { ok: false, motivo: 'El token es válido pero no corresponde a ningún usuario.' }
   return { ok: true }
 }
@@ -53,15 +68,17 @@ export default async function handler(req, res) {
     return
   }
 
+  const entorno = datosEntorno()
+
   let admin
   try {
-    admin = clienteAdmin()
+    admin = clienteAdmin(entorno)
   } catch (e) {
     res.status(500).json({ error: e.message })
     return
   }
 
-  const chequeoSesion = await verificarSesion(admin, req)
+  const chequeoSesion = await verificarSesion(admin, req, entorno)
   if (!chequeoSesion.ok) {
     res.status(401).json({ error: 'No autorizado: ' + chequeoSesion.motivo })
     return
