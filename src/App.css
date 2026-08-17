@@ -203,6 +203,9 @@ body {
   border-radius: 8px;
   font-family: 'Poppins', sans-serif;
   font-size: 14px;
+  background: #fff;
+  color: #4A2C2A;
+  color-scheme: light;
 }
 
 .formulario input:focus,
@@ -343,6 +346,9 @@ body {
   border-radius: 8px;
   font-family: 'Poppins', sans-serif;
   font-size: 14px;
+  background: #fff;
+  color: #4A2C2A;
+  color-scheme: light;
 }
 
 .campo input:focus,
@@ -396,6 +402,9 @@ body {
   border-radius: 8px;
   font-family: 'Poppins', sans-serif;
   font-size: 14px;
+  background: #fff;
+  color: #4A2C2A;
+  color-scheme: light;
 }
 
 .campo-buscador input:focus {
@@ -588,6 +597,9 @@ margin-top: 16px;
   border-radius: 8px;
   font-family: 'Poppins', sans-serif;
   font-size: 14px;
+  background: #fff;
+  color: #4A2C2A;
+  color-scheme: light;
 }
 
 .login-form .campo input:focus {
@@ -699,6 +711,9 @@ margin-top: 16px;
   border-radius: 8px;
   font-family: 'Poppins', sans-serif;
   font-size: 14px;
+  background: #fff;
+  color: #4A2C2A;
+  color-scheme: light;
 }
 
 .form-modal .campo input:focus {
@@ -914,6 +929,9 @@ margin-top: 16px;
   border-radius: 5px;
   font-family: 'Poppins', sans-serif;
   font-size: 12px;
+  background: #fff;
+  color: #4A2C2A;
+  color-scheme: light;
 }
 
 .stat-chip .btn-mini {
@@ -1751,6 +1769,9 @@ margin-top: 16px;
   font-family: 'Poppins', sans-serif;
   font-size: 13px;
   box-sizing: border-box;
+  background: #fff;
+  color: #4A2C2A;
+  color-scheme: light;
 }
 .cabecera-lista .buscador-inline input:focus {
   outline: none;
@@ -1764,6 +1785,7 @@ margin-top: 16px;
   font-size: 13px;
   color: #4A2C2A;
   background: #fff;
+  color-scheme: light;
   max-width: 160px;
 }
 .cabecera-lista .btn-primario {
