@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/backup.js": {
+      "maxDuration": 60
+    }
+  }
+}

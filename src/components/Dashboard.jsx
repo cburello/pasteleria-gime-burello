@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase'
 import { generarListaPreciosDesdeBD } from '../lib/listaPreciosPdf'
 import { useNotificaciones } from '../hooks/useNotificaciones'
 import { useEsMobile } from '../hooks/useEsMobile'
+import { ultimoBackup, tablasConCambios, dispararBackup } from '../lib/backup'
+
+const VEINTICUATRO_HS_MS = 24 * 60 * 60 * 1000
 
 function Dashboard({ onAbrirPedido }) {
   const { mostrarToast } = useNotificaciones()
@@ -14,10 +17,84 @@ function Dashboard({ onAbrirPedido }) {
   const [tipoListaPdf, setTipoListaPdf] = useState('ambos')
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [sinCostoVigente, setSinCostoVigente] = useState([])
+  const [estadoBackup, setEstadoBackup] = useState(null)
+  const [haciendoBackup, setHaciendoBackup] = useState(false)
 
   useEffect(() => {
     cargarDashboard()
+    cargarEstadoBackup()
   }, [])
+
+  async function cargarEstadoBackup() {
+    try {
+      const ultimo = await ultimoBackup()
+      const cambios = await tablasConCambios(ultimo)
+      const pasaron24hs = !ultimo || (Date.now() - new Date(ultimo.fecha).getTime()) > VEINTICUATRO_HS_MS
+      setEstadoBackup({
+        ultimo,
+        cambios,
+        vencido: pasaron24hs && (!ultimo || cambios.length > 0),
+      })
+    } catch {
+      // si falla el chequeo, no molestamos con un aviso: simplemente no se muestra el widget
+      setEstadoBackup(null)
+    }
+  }
+
+  async function hacerBackupDesdeInicio() {
+    setHaciendoBackup(true)
+    try {
+      const resultado = await dispararBackup()
+      mostrarToast(`Backup completo: ${resultado.tablas} tablas, ${resultado.registros} registros.`)
+      cargarEstadoBackup()
+    } catch (e) {
+      mostrarToast('No se pudo hacer el backup: ' + e.message, 'error')
+    } finally {
+      setHaciendoBackup(false)
+    }
+  }
+
+  function tiempoDesde(fechaIso) {
+    const ms = Date.now() - new Date(fechaIso).getTime()
+    const horas = Math.floor(ms / (60 * 60 * 1000))
+    if (horas < 1) return 'hace menos de una hora'
+    if (horas < 24) return `hace ${horas} hora${horas > 1 ? 's' : ''}`
+    const dias = Math.floor(horas / 24)
+    return `hace ${dias} día${dias > 1 ? 's' : ''}`
+  }
+
+  function widgetBackup() {
+    if (!estadoBackup) return null
+    const { ultimo, cambios, vencido } = estadoBackup
+    return (
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+          background: vencido ? '#FFF3CD' : '#F1E9E6',
+          border: `1px solid ${vencido ? '#E8B84A' : '#E8D5CF'}`,
+          borderRadius: '10px', padding: '10px 14px', marginBottom: '14px',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: '200px', fontSize: '12.5px', color: vencido ? '#6b5322' : '#8A6A66' }}>
+          {vencido ? (
+            <>
+              <strong style={{ display: 'block', color: '#6b5322' }}>
+                {ultimo ? `Hace más de 24hs que no hacés un backup` : 'Nunca hiciste un backup'}
+              </strong>
+              {ultimo
+                ? `Último: ${tiempoDesde(ultimo.fecha)}. Cambiaron ${cambios.length} tabla${cambios.length > 1 ? 's' : ''} desde entonces.`
+                : 'Conviene hacer uno antes de seguir cargando datos.'}
+            </>
+          ) : (
+            <>Backup al día — último {tiempoDesde(ultimo.fecha)}, sin cambios sin respaldar.</>
+          )}
+        </div>
+        <button className="btn-primario" onClick={hacerBackupDesdeInicio} disabled={haciendoBackup} style={{ flexShrink: 0 }}>
+          {haciendoBackup ? 'Haciendo backup...' : '💾 Hacer backup ahora'}
+        </button>
+      </div>
+    )
+  }
 
   function formatearMoneda(valor) {
     if (valor === null || valor === undefined || isNaN(valor)) return '0,00'
@@ -256,6 +333,7 @@ function Dashboard({ onAbrirPedido }) {
     <div className="modulo">
       <h2>Inicio</h2>
 
+      {widgetBackup()}
       {alertaSinCosto()}
 
       <div className="subseccion">
