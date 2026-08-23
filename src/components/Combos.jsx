@@ -601,6 +601,17 @@ function DetalleCombo({ combo, onVolver }) {
                 Usar sugerido (${formatearMoneda(precioSugerido)})
               </button>
             )}
+            <div className="campo">
+              <label>Rubro</label>
+              <select value={idSeccion} onChange={(e) => setIdSeccion(e.target.value)}>
+                <option value="">— Sin rubro (no se publica) —</option>
+                {secciones.map((s) => (
+                  <option key={s.id_seccion} value={s.id_seccion}>
+                    {s.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button className="btn-primario" onClick={handleGuardarCombo} disabled={guardando} style={{ width: '100%' }}>
               {guardando ? 'Guardando...' : 'Guardar'}
             </button>
@@ -721,18 +732,6 @@ function DetalleCombo({ combo, onVolver }) {
 
               <div className="formulario formulario-costos">
                 <div className="campo" style={{ flex: 2 }}>
-                  <label>Rubro</label>
-                  <select value={idSeccion} onChange={(e) => setIdSeccion(e.target.value)}>
-                    <option value="">— Sin rubro (no se publica) —</option>
-                    {secciones.map((s) => (
-                      <option key={s.id_seccion} value={s.id_seccion}>
-                        {s.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="campo" style={{ flex: 2 }}>
                   <label>Frase de venta</label>
                   <input
                     type="text"
@@ -802,7 +801,7 @@ function DetalleCombo({ combo, onVolver }) {
                 </div>
               </div>
 
-              <div className="formulario formulario-costos">
+              <div className="formulario formulario-costos" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
                 <div className="campo">
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <input
@@ -815,11 +814,9 @@ function DetalleCombo({ combo, onVolver }) {
                   </label>
                 </div>
 
-                <div className="campo-acciones">
-                  <button className="btn-primario" onClick={handleGuardarCombo} disabled={guardando}>
-                    {guardando ? 'Guardando...' : 'Guardar publicación web'}
-                  </button>
-                </div>
+                <span style={{ fontSize: 12, color: '#8A6A66' }}>
+                  Se guarda con el botón <strong style={{ color: '#E8765C' }}>Guardar</strong> de la izquierda.
+                </span>
               </div>
             </>
           )}
