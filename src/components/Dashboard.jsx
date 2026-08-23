@@ -63,35 +63,29 @@ function Dashboard({ onAbrirPedido }) {
     return `hace ${dias} día${dias > 1 ? 's' : ''}`
   }
 
-  function widgetBackup() {
+  function filaAvisoBackup() {
     if (!estadoBackup) return null
     const { ultimo, cambios, vencido } = estadoBackup
     return (
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-          background: vencido ? '#FFF3CD' : '#F1E9E6',
-          border: `1px solid ${vencido ? '#E8B84A' : '#E8D5CF'}`,
-          borderRadius: '10px', padding: '10px 14px', marginBottom: '14px',
-        }}
-      >
-        <div style={{ flex: 1, minWidth: '200px', fontSize: '12.5px', color: vencido ? '#6b5322' : '#8A6A66' }}>
+      <div className="aviso-fila" key="backup">
+        <span className="aviso-fila-icono">💾</span>
+        <span className="aviso-fila-texto">
           {vencido ? (
             <>
-              <strong style={{ display: 'block', color: '#6b5322' }}>
-                {ultimo ? `Hace más de 24hs que no hacés un backup` : 'Nunca hiciste un backup'}
-              </strong>
+              <strong>{ultimo ? 'Hace más de 24hs que no hacés un backup' : 'Nunca hiciste un backup'}</strong>
               {ultimo
-                ? `Último: ${tiempoDesde(ultimo.fecha)}. Cambiaron ${cambios.length} tabla${cambios.length > 1 ? 's' : ''} desde entonces.`
-                : 'Conviene hacer uno antes de seguir cargando datos.'}
+                ? ` — último ${tiempoDesde(ultimo.fecha)}, cambiaron ${cambios.length} tabla${cambios.length > 1 ? 's' : ''} desde entonces.`
+                : ' — conviene hacer uno antes de seguir cargando datos.'}
             </>
           ) : (
             <>Backup al día — último {tiempoDesde(ultimo.fecha)}, sin cambios sin respaldar.</>
           )}
-        </div>
-        <button className="btn-primario" onClick={hacerBackupDesdeInicio} disabled={haciendoBackup} style={{ flexShrink: 0 }}>
-          {haciendoBackup ? 'Haciendo backup...' : '💾 Hacer backup ahora'}
-        </button>
+        </span>
+        {vencido && (
+          <button className="aviso-fila-accion" onClick={hacerBackupDesdeInicio} disabled={haciendoBackup}>
+            {haciendoBackup ? 'Haciendo backup...' : 'Hacer backup ahora'}
+          </button>
+        )}
       </div>
     )
   }
@@ -199,24 +193,76 @@ function Dashboard({ onAbrirPedido }) {
     setGenerandoPdf(false)
   }
 
-  function alertaSinCosto() {
+  function filaAvisoCostos() {
     if (sinCostoVigente.length === 0) return null
     return (
+      <div className="aviso-fila" key="costos">
+        <span className="aviso-fila-icono">⚠️</span>
+        <span className="aviso-fila-texto">
+          {sinCostoVigente.length} materia{sinCostoVigente.length > 1 ? 's' : ''} prima
+          {sinCostoVigente.length > 1 ? 's' : ''} sin costo vigente
+        </span>
+      </div>
+    )
+  }
+
+  function avisosDesktop() {
+    const filaBackup = filaAvisoBackup()
+    const filaCostos = filaAvisoCostos()
+    if (!filaBackup && !filaCostos) return null
+    return (
+      <div className="avisos-compactos">
+        {filaBackup}
+        {filaCostos}
+      </div>
+    )
+  }
+
+  function avisosMobile() {
+    const filaCostos = filaAvisoCostos()
+    if (!filaCostos) return null
+    return <div className="avisos-compactos">{filaCostos}</div>
+  }
+
+  function iniciales(nombre) {
+    const limpio = (nombre || '').trim()
+    if (!limpio) return '—'
+    return limpio
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase()
+  }
+
+  function fechaHoyCorta() {
+    const dias = ['dom.', 'lun.', 'mar.', 'mié.', 'jue.', 'vie.', 'sáb.']
+    const hoy = new Date()
+    const d = String(hoy.getDate()).padStart(2, '0')
+    const m = String(hoy.getMonth() + 1).padStart(2, '0')
+    return `${dias[hoy.getDay()]} ${d}/${m}/${hoy.getFullYear()}`
+  }
+
+  function filaPedidoOperativa(p, campoFecha) {
+    const pendiente = p.saldo > 0.01
+    return (
       <div
-        style={{
-          background: '#FBEFD9',
-          border: '1px solid #E3C77A',
-          borderLeft: '3px solid #C9A227',
-          borderRadius: '7px',
-          padding: '5px 10px',
-          marginBottom: '10px',
-          color: '#6B5310',
-          fontSize: '11px',
-          fontWeight: 600,
-        }}
+        key={p.id_pedido}
+        className="fila-operativa"
+        onClick={() => onAbrirPedido(p.id_pedido)}
       >
-        ⚠️ {sinCostoVigente.length} materia{sinCostoVigente.length > 1 ? 's' : ''} prima
-        {sinCostoVigente.length > 1 ? 's' : ''} sin costo vigente
+        <span className={`fila-operativa-dot ${pendiente ? 'pendiente' : 'cobrado'}`}></span>
+        <span className="avatar-iniciales">{iniciales(nombreCliente(p))}</span>
+        <div className="fila-operativa-info">
+          <div className="fila-operativa-nombre">{nombreCliente(p)}</div>
+          <div className="fila-operativa-sub">{formatearFecha(p[campoFecha])} · #{p.id_pedido}</div>
+        </div>
+        <div className="fila-operativa-montos">
+          <div className="fila-operativa-total">${formatearMoneda(p.total)}</div>
+          <div className={`fila-operativa-estado ${pendiente ? 'pendiente' : 'cobrado'}`}>
+            {pendiente ? `Saldo $${formatearMoneda(p.saldo)}` : 'Cobrado'}
+          </div>
+        </div>
       </div>
     )
   }
@@ -237,7 +283,7 @@ function Dashboard({ onAbrirPedido }) {
           <h2>Inicio</h2>
         </div>
 
-        {alertaSinCosto()}
+        {avisosMobile()}
 
         <div className="mobile-resumen-card">
           <div className="nombre" style={{ marginBottom: '8px' }}>Resumen del mes</div>
@@ -284,8 +330,9 @@ function Dashboard({ onAbrirPedido }) {
           <div className="lista-tarjetas" style={{ paddingBottom: '10px' }}>
             {proximosEntregar.map((p) => (
               <div key={p.id_pedido} className="tarjeta-pedido" onClick={() => onAbrirPedido(p.id_pedido)}>
-                <div className="tarjeta-pedido-linea1">
-                  <span className="tarjeta-pedido-cliente">{nombreCliente(p)}</span>
+                <div className="tarjeta-pedido-linea1" style={{ alignItems: 'center' }}>
+                  <span className="avatar-iniciales">{iniciales(nombreCliente(p))}</span>
+                  <span className="tarjeta-pedido-cliente" style={{ flex: 1 }}>{nombreCliente(p)}</span>
                   <span className="tarjeta-pedido-id">#{p.id_pedido}</span>
                 </div>
                 <div className="tarjeta-pedido-fecha">Entrega: {formatearFecha(p.fecha_entrega)}</div>
@@ -309,8 +356,9 @@ function Dashboard({ onAbrirPedido }) {
           <div className="lista-tarjetas">
             {conSaldoPendiente.map((p) => (
               <div key={p.id_pedido} className="tarjeta-pedido" onClick={() => onAbrirPedido(p.id_pedido)}>
-                <div className="tarjeta-pedido-linea1">
-                  <span className="tarjeta-pedido-cliente">{nombreCliente(p)}</span>
+                <div className="tarjeta-pedido-linea1" style={{ alignItems: 'center' }}>
+                  <span className="avatar-iniciales">{iniciales(nombreCliente(p))}</span>
+                  <span className="tarjeta-pedido-cliente" style={{ flex: 1 }}>{nombreCliente(p)}</span>
                   <span className="tarjeta-pedido-id">#{p.id_pedido}</span>
                 </div>
                 <div className="tarjeta-pedido-fecha">Pedido: {formatearFecha(p.fecha_pedido)}</div>
@@ -328,82 +376,49 @@ function Dashboard({ onAbrirPedido }) {
     )
   }
 
-  // ===== VISTA DESKTOP (rediseñada: totales centrados + filas con estado de pago) =====
+  // ===== VISTA DESKTOP (dirección operativa: tira de KPIs + listas en dos columnas) =====
   return (
     <div className="modulo">
-      <h2>Inicio</h2>
+      <div className="encabezado-modulo-compacto">
+        <h2>Inicio</h2>
+        <span className="fecha-hoy">{fechaHoyCorta()}</span>
+      </div>
 
-      {widgetBackup()}
-      {alertaSinCosto()}
+      {avisosDesktop()}
 
-      <div className="subseccion">
-        <h3 className="dashboard-subtitulo">Resumen del mes en curso</h3>
-        <div className="dashboard-resumen-grid">
-          <div className="dashboard-resumen-item">
-            <span className="dashboard-resumen-label">Pedidos del mes</span>
-            <span className="dashboard-resumen-valor">{resumenMes.cantidad}</span>
-          </div>
-          <div className="dashboard-resumen-item con-borde">
-            <span className="dashboard-resumen-label">Total facturado</span>
-            <span className="dashboard-resumen-valor">${formatearMoneda(resumenMes.totalFacturado)}</span>
-          </div>
-          <div className="dashboard-resumen-item">
-            <span className="dashboard-resumen-label">Total cobrado</span>
-            <span className="dashboard-resumen-valor cobrado">${formatearMoneda(resumenMes.totalCobrado)}</span>
-          </div>
+      <div className="kpi-tira">
+        <div className="kpi-tira-item">
+          <div className="kpi-tira-label">Pedidos del mes</div>
+          <div className="kpi-tira-valor">{resumenMes.cantidad}</div>
+        </div>
+        <div className="kpi-tira-item">
+          <div className="kpi-tira-label">Total facturado</div>
+          <div className="kpi-tira-valor">${formatearMoneda(resumenMes.totalFacturado)}</div>
+        </div>
+        <div className="kpi-tira-item">
+          <div className="kpi-tira-label">Total cobrado</div>
+          <div className="kpi-tira-valor cobrado">${formatearMoneda(resumenMes.totalCobrado)}</div>
         </div>
       </div>
 
-      <div className="subseccion">
-        <h3 className="dashboard-subtitulo">Próximos a entregar (7 días)</h3>
-        {proximosEntregar.length === 0 ? (
-          <p className="aviso-ok">✅ No tenés entregas programadas para los próximos 7 días.</p>
-        ) : (
-          <div className="dashboard-filas">
-            {proximosEntregar.map((p) => (
-              <div key={p.id_pedido} className="dashboard-fila">
-                <div className="dashboard-fila-principal">
-                  <span className="dashboard-fila-fecha">{formatearFecha(p.fecha_entrega)}</span>
-                  <span className="dashboard-fila-cliente">{nombreCliente(p)}</span>
-                </div>
-                <span className="dashboard-fila-monto">Total ${formatearMoneda(p.total)}</span>
-                <span className={`dashboard-fila-monto ${p.saldo > 0.01 ? 'pendiente' : 'cobrado'}`}>
-                  Saldo ${formatearMoneda(p.saldo)}
-                </span>
-                <span className={`tarjeta-pedido-estado ${p.saldo > 0.01 ? 'pendiente' : 'cobrado'}`}>
-                  {p.saldo > 0.01 ? 'Pendiente' : 'Cobrado'}
-                </span>
-                <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
-                  Ver pedido
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <div className="dos-columnas">
+        <div>
+          <div className="subseccion-titulo-compacto">Próximos a entregar · 7 días</div>
+          {proximosEntregar.length === 0 ? (
+            <p className="aviso-ok">✅ No tenés entregas programadas para los próximos 7 días.</p>
+          ) : (
+            proximosEntregar.map((p) => filaPedidoOperativa(p, 'fecha_entrega'))
+          )}
+        </div>
 
-      <div className="subseccion">
-        <h3 className="dashboard-subtitulo">Pedidos con saldo pendiente</h3>
-        {conSaldoPendiente.length === 0 ? (
-          <p className="aviso-ok">✅ No hay pedidos con saldo pendiente.</p>
-        ) : (
-          <div className="dashboard-filas">
-            {conSaldoPendiente.map((p) => (
-              <div key={p.id_pedido} className="dashboard-fila">
-                <div className="dashboard-fila-principal">
-                  <span className="dashboard-fila-fecha">{formatearFecha(p.fecha_pedido)}</span>
-                  <span className="dashboard-fila-cliente">{nombreCliente(p)}</span>
-                </div>
-                <span className="dashboard-fila-monto">Total ${formatearMoneda(p.total)}</span>
-                <span className="dashboard-fila-monto pendiente">Saldo ${formatearMoneda(p.saldo)}</span>
-                <span className="tarjeta-pedido-estado pendiente">Pendiente</span>
-                <button className="btn-link" onClick={() => onAbrirPedido(p.id_pedido)}>
-                  Ver pedido
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <div>
+          <div className="subseccion-titulo-compacto">Pedidos con saldo pendiente</div>
+          {conSaldoPendiente.length === 0 ? (
+            <p className="aviso-ok">✅ No hay pedidos con saldo pendiente.</p>
+          ) : (
+            conSaldoPendiente.map((p) => filaPedidoOperativa(p, 'fecha_pedido'))
+          )}
+        </div>
       </div>
     </div>
   )

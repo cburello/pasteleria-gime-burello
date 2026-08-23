@@ -187,6 +187,17 @@ function formatearFecha(fecha) {
     return pedido.clientes?.descripcion || pedido.descripcion || '—'
   }
 
+  function iniciales(nombre) {
+    const limpio = (nombre || '').trim()
+    if (!limpio) return '—'
+    return limpio
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((p) => p[0])
+      .join('')
+      .toUpperCase()
+  }
+
   // --- Funciones del cobro rápido (mobile) ---
   async function cargarMediosPagoLista() {
     const { data } = await supabase.from('medios_pagos').select('*').order('descripcion')
@@ -369,8 +380,9 @@ function formatearFecha(fecha) {
 
             {pedidosFiltrados.map((p) => (
               <div key={p.id_pedido} className="tarjeta-pedido" onClick={() => abrirPedido(p)}>
-                <div className="tarjeta-pedido-linea1">
-                  <span className="tarjeta-pedido-cliente">{nombreCliente(p)}</span>
+                <div className="tarjeta-pedido-linea1" style={{ alignItems: 'center' }}>
+                  <span className="avatar-iniciales">{iniciales(nombreCliente(p))}</span>
+                  <span className="tarjeta-pedido-cliente" style={{ flex: 1 }}>{nombreCliente(p)}</span>
                   <span className="tarjeta-pedido-id">#{p.id_pedido}</span>
                 </div>
                 <div className="tarjeta-pedido-fecha">
@@ -498,7 +510,7 @@ function formatearFecha(fecha) {
     )
   }
 
-  // ===== VISTA DESKTOP: tabla (sin cambios) =====
+  // ===== VISTA DESKTOP (dirección operativa: filas compactas) =====
   return (
     <div className="modulo">
       <h2>Pedidos</h2>
@@ -564,56 +576,50 @@ function formatearFecha(fecha) {
       {error && <p className="mensaje-error">{error}</p>}
 
       {!cargando && !error && (
-        <div className="tabla-wrapper">
-          <table className="tabla">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Cliente</th>
-                <th>Fecha pedido</th>
-                <th>Fecha entrega</th>
-                <th>Total</th>
-                <th>Pendiente</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pedidosFiltrados.length === 0 && (
-                <tr>
-                  <td colSpan="7">No hay pedidos registrados.</td>
-                </tr>
-              )}
-              {pedidosFiltrados.map((p) => (
-                <tr key={p.id_pedido}>
-                  <td>{p.id_pedido}</td>
-                  <td>{nombreCliente(p)}</td>
-                  <td>{formatearFecha(p.fecha_pedido)}</td>
-                  <td>{formatearFecha(p.fecha_entrega)}</td>
-                  <td>${formatearMoneda(p.total)}</td>
-                  <td style={{ color: p.pendiente > 0.01 ? '#C0392B' : '#2D6A35', fontWeight: 600 }}>
-                    ${formatearMoneda(p.pendiente)}
-                  </td>
-                  <td>
-                    <button className="btn-link" onClick={() => abrirPedido(p)}>
-                      Ver / Editar
+        <div>
+          {pedidosFiltrados.length === 0 && <p>No hay pedidos registrados.</p>}
+
+          {pedidosFiltrados.map((p) => {
+            const pendiente = p.pendiente > 0.01
+            return (
+              <div key={p.id_pedido} className="fila-operativa" onClick={() => abrirPedido(p)}>
+                <span className={`fila-operativa-dot ${pendiente ? 'pendiente' : 'cobrado'}`}></span>
+                <span className="avatar-iniciales">{iniciales(nombreCliente(p))}</span>
+                <div className="fila-operativa-info">
+                  <div className="fila-operativa-nombre">{nombreCliente(p)}</div>
+                  <div className="fila-operativa-sub">
+                    Pedido {formatearFecha(p.fecha_pedido)} · Entrega {formatearFecha(p.fecha_entrega) || '—'} · #{p.id_pedido}
+                  </div>
+                </div>
+                <div className="fila-operativa-montos">
+                  <div className="fila-operativa-total">${formatearMoneda(p.total)}</div>
+                  <div className={`fila-operativa-estado ${pendiente ? 'pendiente' : 'cobrado'}`}>
+                    {pendiente ? `Saldo $${formatearMoneda(p.pendiente)}` : 'Cobrado'}
+                  </div>
+                </div>
+                <div className="fila-operativa-acciones">
+                  {p.clientes?.telefono && (
+                    <button
+                      className="btn-link"
+                      style={{ color: '#25D366' }}
+                      onClick={(e) => enviarWhatsapp(p, e)}
+                    >
+                      📲 WA
                     </button>
-                    {p.clientes?.telefono && (
-                      <button
-                        className="btn-link"
-                        style={{ color: '#25D366' }}
-                        onClick={(e) => enviarWhatsapp(p, e)}
-                      >
-                        📲 WA
-                      </button>
-                    )}
-                    <button className="btn-link btn-eliminar" onClick={() => eliminarPedido(p.id_pedido)}>
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  )}
+                  <button
+                    className="btn-link btn-eliminar"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      eliminarPedido(p.id_pedido)
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
