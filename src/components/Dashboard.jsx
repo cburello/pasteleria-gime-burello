@@ -64,28 +64,20 @@ function Dashboard({ onAbrirPedido }) {
   }
 
   function filaAvisoBackup() {
-    if (!estadoBackup) return null
-    const { ultimo, cambios, vencido } = estadoBackup
+    if (!estadoBackup || !estadoBackup.vencido) return null
+    const { ultimo, cambios } = estadoBackup
     return (
       <div className="aviso-fila" key="backup">
         <span className="aviso-fila-icono">💾</span>
         <span className="aviso-fila-texto">
-          {vencido ? (
-            <>
-              <strong>{ultimo ? 'Hace más de 24hs que no hacés un backup' : 'Nunca hiciste un backup'}</strong>
-              {ultimo
-                ? ` — último ${tiempoDesde(ultimo.fecha)}, cambiaron ${cambios.length} tabla${cambios.length > 1 ? 's' : ''} desde entonces.`
-                : ' — conviene hacer uno antes de seguir cargando datos.'}
-            </>
-          ) : (
-            <>Backup al día — último {tiempoDesde(ultimo.fecha)}, sin cambios sin respaldar.</>
-          )}
+          <strong>{ultimo ? 'Hace más de 24hs que no hacés un backup' : 'Nunca hiciste un backup'}</strong>
+          {ultimo
+            ? ` — último ${tiempoDesde(ultimo.fecha)}, cambiaron ${cambios.length} tabla${cambios.length > 1 ? 's' : ''} desde entonces.`
+            : ' — conviene hacer uno antes de seguir cargando datos.'}
         </span>
-        {vencido && (
-          <button className="aviso-fila-accion" onClick={hacerBackupDesdeInicio} disabled={haciendoBackup}>
-            {haciendoBackup ? 'Haciendo backup...' : 'Hacer backup ahora'}
-          </button>
-        )}
+        <button className="aviso-fila-accion" onClick={hacerBackupDesdeInicio} disabled={haciendoBackup}>
+          {haciendoBackup ? 'Haciendo backup...' : 'Hacer backup ahora'}
+        </button>
       </div>
     )
   }

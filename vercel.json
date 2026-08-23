@@ -2,6 +2,9 @@
   "functions": {
     "api/backup.js": {
       "maxDuration": 60
+    },
+    "api/restore.js": {
+      "maxDuration": 60
     }
   }
 }

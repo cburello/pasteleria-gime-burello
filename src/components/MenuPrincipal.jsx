@@ -66,6 +66,7 @@ function MenuPrincipal({ paginaActual, onCambiarPagina }) {
         { id: 'retiros', label: 'Retiros' },
         { id: 'resultados', label: 'Resultados' },
         { id: 'backup', label: 'Backup' },
+        { id: 'mantenimiento', label: 'Mantenimiento' },
       ],
     },
   ]

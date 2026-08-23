@@ -28,6 +28,7 @@ import PedidosWeb from './components/PedidosWeb'
 import CaratulaWeb from './components/CaratulaWeb'
 import Presupuestos from './components/Presupuestos'
 import Backup from './components/Backup'
+import Mantenimiento from './components/Mantenimiento'
 import { useEsMobile, usePantallaMovil, useForzarEscritorio } from './hooks/useEsMobile'
 
 const ENTORNO = (import.meta.env.VITE_APP_ENV || 'produccion').trim().toLowerCase()
@@ -209,6 +210,7 @@ const [sesion, setSesion] = useState(null)
 {paginaActual === 'retiros' && <Retiros />}
 {paginaActual === 'resultados' && <Resultados />}
         {paginaActual === 'backup' && <Backup />}
+        {paginaActual === 'mantenimiento' && <Mantenimiento />}
       </main>
     </div>
   )
