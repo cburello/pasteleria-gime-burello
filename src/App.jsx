@@ -29,6 +29,7 @@ import CaratulaWeb from './components/CaratulaWeb'
 import Presupuestos from './components/Presupuestos'
 import Backup from './components/Backup'
 import Mantenimiento from './components/Mantenimiento'
+import HistorialClientes from './components/HistorialClientes'
 import { useEsMobile, usePantallaMovil, useForzarEscritorio } from './hooks/useEsMobile'
 
 const ENTORNO = (import.meta.env.VITE_APP_ENV || 'produccion').trim().toLowerCase()
@@ -139,79 +140,105 @@ const [sesion, setSesion] = useState(null)
     )
   }
 
+  const paginas = (
+    <>
+      {paginaActual === 'inicio' && <Dashboard onAbrirPedido={irAPedido} />}
+      {paginaActual === 'materiasPrimas' && <MateriasPrimas />}
+      {paginaActual === 'recetas' && <Recetas />}
+      {paginaActual === 'productos' && <Productos />}
+      {paginaActual === 'combos' && <Combos />}
+      {paginaActual === 'preciosMantenimiento' && <PreciosMantenimiento />}
+      {paginaActual === 'analisisPrecios' && <AnalisisPrecios />}
+      {paginaActual === 'secciones' && <Secciones />}
+      {paginaActual === 'clientes' && <Clientes />}
+      {paginaActual === 'pedidos' && (
+        <Pedidos idPedidoAbrir={idPedidoAbrir} onPedidoAbierto={() => setIdPedidoAbrir(null)} />
+      )}
+      {paginaActual === 'informes' && <Informes />}
+      {paginaActual === 'historialClientes' && <HistorialClientes />}
+      {paginaActual === 'pedidosWeb' && <PedidosWeb />}
+      {paginaActual === 'presupuestos' && <Presupuestos />}
+      {paginaActual === 'caratulaWeb' && <CaratulaWeb />}
+      {paginaActual === 'proveedores' && <Proveedores />}
+      {paginaActual === 'gastos' && <Gastos />}
+      {paginaActual === 'ingresos' && <Ingresos />}
+      {paginaActual === 'retiros' && <Retiros />}
+      {paginaActual === 'resultados' && <Resultados />}
+      {paginaActual === 'backup' && <Backup />}
+      {paginaActual === 'mantenimiento' && <Mantenimiento />}
+    </>
+  )
+
   return (
     <div className={`app-container${forzarEscritorio ? ' forzado-escritorio' : ''}`}>
-<header className="app-header compacto">
-        <div className="app-header-marca">
-          <img src={logo} alt="Gime Burello Pastelería" className="app-logo" />
-          <h1>Gime Burello Pasteleria<span>Pastelería</span></h1>
-        </div>
-        <div className="header-acciones">
-          <span
-            className={`badge-entorno ${ES_PRUEBA ? 'prueba' : 'produccion'}`}
-            title={ES_PRUEBA ? 'Estás conectado a la base de datos de PRUEBA (Pasteleria-Prueba)' : 'Estás conectado a la base de datos de PRODUCCIÓN'}
-            data-icono={ES_PRUEBA ? '🧪' : '🟢'}
-          >
-            {ES_PRUEBA ? '🧪 PRUEBA' : '🟢 PRODUCCIÓN'}
-          </span>
-          {pantallaMovil && (
-            <button
-              className="btn-forzar-escritorio"
-              onClick={alternarForzarEscritorio}
-              title={forzarEscritorio ? 'Volver a la vista para celular' : 'Ver el sistema como en la computadora'}
-            >
-              {forzarEscritorio ? '📱 Móvil' : '🖥️ Escritorio'}
-            </button>
-          )}
-          {puedeActivarBiometria && (
-            <button
-              className="btn-activar-biometria"
-              onClick={activarBiometria}
-              title="Activar huella / Face ID"
-            >
-              {esMobile ? '🔓' : '🔓 Activar huella / Face ID'}
-            </button>
-          )}
-          <button className="btn-cambiar-password" onClick={() => setMostrarCambiarPassword(true)}>
-            🔑 Cambiar contraseña
-          </button>
-          <button className="btn-cerrar-sesion" onClick={cerrarSesion}>
-            🚪 Cerrar sesión
-          </button>
-        </div>
-      </header>
-
       {mostrarCambiarPassword && (
         <CambiarPassword onCerrar={() => setMostrarCambiarPassword(false)} />
       )}
 
-<MenuPrincipal paginaActual={paginaActual} onCambiarPagina={setPaginaActual} />
+      {esMobile ? (
+        <>
+          <header className="app-header compacto">
+            <div className="app-header-marca">
+              <img src={logo} alt="Gime Burello Pastelería" className="app-logo" />
+              <h1>Gime Burello Pasteleria<span>Pastelería</span></h1>
+            </div>
+            <div className="header-acciones">
+              <span
+                className={`badge-entorno ${ES_PRUEBA ? 'prueba' : 'produccion'}`}
+                title={ES_PRUEBA ? 'Estás conectado a la base de datos de PRUEBA (Pasteleria-Prueba)' : 'Estás conectado a la base de datos de PRODUCCIÓN'}
+                data-icono={ES_PRUEBA ? '🧪' : '🟢'}
+              >
+                {ES_PRUEBA ? '🧪 PRUEBA' : '🟢 PRODUCCIÓN'}
+              </span>
+              {pantallaMovil && (
+                <button
+                  className="btn-forzar-escritorio"
+                  onClick={alternarForzarEscritorio}
+                  title={forzarEscritorio ? 'Volver a la vista para celular' : 'Ver el sistema como en la computadora'}
+                >
+                  {forzarEscritorio ? '📱 Móvil' : '🖥️ Escritorio'}
+                </button>
+              )}
+              {puedeActivarBiometria && (
+                <button
+                  className="btn-activar-biometria"
+                  onClick={activarBiometria}
+                  title="Activar huella / Face ID"
+                >
+                  {esMobile ? '🔓' : '🔓 Activar huella / Face ID'}
+                </button>
+              )}
+              <button className="btn-cambiar-password" onClick={() => setMostrarCambiarPassword(true)}>
+                🔑 Cambiar contraseña
+              </button>
+              <button className="btn-cerrar-sesion" onClick={cerrarSesion}>
+                🚪 Cerrar sesión
+              </button>
+            </div>
+          </header>
 
-      <main className="app-content">
-        {paginaActual === 'inicio' && <Dashboard onAbrirPedido={irAPedido} />}
-        {paginaActual === 'materiasPrimas' && <MateriasPrimas />}
-        {paginaActual === 'recetas' && <Recetas />}
-        {paginaActual === 'productos' && <Productos />}
-        {paginaActual === 'combos' && <Combos />}
-        {paginaActual === 'preciosMantenimiento' && <PreciosMantenimiento />}
-        {paginaActual === 'analisisPrecios' && <AnalisisPrecios />}
-        {paginaActual === 'secciones' && <Secciones />}
-        {paginaActual === 'clientes' && <Clientes />}
-        {paginaActual === 'pedidos' && (
-          <Pedidos idPedidoAbrir={idPedidoAbrir} onPedidoAbierto={() => setIdPedidoAbrir(null)} />
-        )}
-		{paginaActual === 'informes' && <Informes />}
-		{paginaActual === 'pedidosWeb' && <PedidosWeb />}
-        {paginaActual === 'presupuestos' && <Presupuestos />}
-        {paginaActual === 'caratulaWeb' && <CaratulaWeb />}
-        {paginaActual === 'proveedores' && <Proveedores />}        
-        {paginaActual === 'gastos' && <Gastos />}
-{paginaActual === 'ingresos' && <Ingresos />}        
-{paginaActual === 'retiros' && <Retiros />}
-{paginaActual === 'resultados' && <Resultados />}
-        {paginaActual === 'backup' && <Backup />}
-        {paginaActual === 'mantenimiento' && <Mantenimiento />}
-      </main>
+          <MenuPrincipal paginaActual={paginaActual} onCambiarPagina={setPaginaActual} />
+
+          <main className="app-content">{paginas}</main>
+        </>
+      ) : (
+        <div className="app-shell-escritorio">
+          <MenuPrincipal
+            paginaActual={paginaActual}
+            onCambiarPagina={setPaginaActual}
+            entornoPrueba={ES_PRUEBA}
+            onCambiarPassword={() => setMostrarCambiarPassword(true)}
+            onCerrarSesion={cerrarSesion}
+            puedeActivarBiometria={puedeActivarBiometria}
+            onActivarBiometria={activarBiometria}
+            pantallaMovil={pantallaMovil}
+            forzarEscritorio={forzarEscritorio}
+            onAlternarForzarEscritorio={alternarForzarEscritorio}
+          />
+
+          <main className="app-content">{paginas}</main>
+        </div>
+      )}
     </div>
   )
 }
