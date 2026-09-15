@@ -19,6 +19,7 @@ const GRUPOS = [
       { id: 'combos', label: 'Combos' },
       { id: 'preciosMantenimiento', label: 'Mantenimiento de Precios' },
       { id: 'analisisPrecios', label: 'Análisis de Precios' },
+      { id: 'personalizacion', label: 'Personalización' },
       { id: 'secciones', label: 'Secciones web' },
       { id: 'caratulaWeb', label: 'Carátula y promo' },
     ],

@@ -2315,3 +2315,91 @@ margin-top: 16px;
     max-width: none;
   }
 }
+
+/* PERSONALIZACIÓN */
+.campo-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4A2C2A;
+  cursor: pointer;
+}
+.campo-check input {
+  width: auto;
+}
+
+.fila-2 {
+  display: flex;
+  gap: 10px;
+}
+.fila-2 .campo {
+  flex: 1;
+}
+
+.campo.grande {
+  flex: 2;
+  min-width: 200px;
+}
+
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.badge-obligatorio {
+  background-color: #FBEFD9;
+  color: #8A6D3B;
+}
+.badge-opcional {
+  background-color: #EAF3EE;
+  color: #3E7A54;
+}
+
+.foto-mini {
+  width: 44px;
+  height: 33px;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+  background-color: #FFF5F2;
+}
+.foto-vacia {
+  width: 44px;
+  height: 33px;
+  border-radius: 6px;
+  background-color: #FFF5F2;
+  border: 1px dashed #E8D5CF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #C7ACA5;
+}
+.foto-preview {
+  width: 76px;
+  height: 57px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-top: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.btn-estrella {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.btn-estrella.activa {
+  color: #C9A227;
+}
+.btn-estrella:not(.activa) {
+  color: #D8C6C1;
+}

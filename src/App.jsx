@@ -24,6 +24,7 @@ import Resultados from './components/Resultados'
 import PreciosMantenimiento from './components/PreciosMantenimiento'
 import AnalisisPrecios from './components/AnalisisPrecios'
 import Secciones from './components/Secciones'
+import Personalizacion from './components/Personalizacion'
 import PedidosWeb from './components/PedidosWeb'
 import CaratulaWeb from './components/CaratulaWeb'
 import Presupuestos from './components/Presupuestos'
@@ -149,6 +150,7 @@ const [sesion, setSesion] = useState(null)
       {paginaActual === 'combos' && <Combos />}
       {paginaActual === 'preciosMantenimiento' && <PreciosMantenimiento />}
       {paginaActual === 'analisisPrecios' && <AnalisisPrecios />}
+      {paginaActual === 'personalizacion' && <Personalizacion />}
       {paginaActual === 'secciones' && <Secciones />}
       {paginaActual === 'clientes' && <Clientes />}
       {paginaActual === 'pedidos' && (
