@@ -323,10 +323,7 @@ export async function generarPdfPedidosEntrega(supabase, { desde, hasta, incluir
     ? `Entregas_${desde}.pdf`
     : `Entregas_${desde}_a_${hasta}.pdf`
 
-  const esMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-  if (esMobile) {
-    window.open(doc.output('bloburl'), '_blank')
-  } else {
-    doc.save(nombreArchivo)
-  }
+  // también en mobile se descarga con doc.save: abrir el blob en otra pestaña
+  // hacía que el archivo quedara con un nombre aleatorio en vez de nombreArchivo
+  doc.save(nombreArchivo)
 }

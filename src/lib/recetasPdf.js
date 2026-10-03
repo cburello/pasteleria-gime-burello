@@ -338,10 +338,7 @@ export async function generarPdfRecetas(supabase, recetasSeleccionadas) {
     ? `Receta_${recetasSeleccionadas[0].descripcion.replace(/[^a-zA-Z0-9]+/g, '_')}.pdf`
     : `Recetas_${new Date().toISOString().slice(0, 10)}.pdf`
 
-  const esMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-  if (esMobile) {
-    window.open(doc.output('bloburl'), '_blank')
-  } else {
-    doc.save(nombreArchivo)
-  }
+  // también en mobile se descarga con doc.save: abrir el blob en otra pestaña
+  // hacía que el archivo quedara con un nombre aleatorio en vez de nombreArchivo
+  doc.save(nombreArchivo)
 }

@@ -178,9 +178,7 @@ export function generarPresupuestoPdf(presupuesto, lineas) {
   doc.text(`Página ${paginaActual}`, anchoPagina - margenIzq, 288, { align: 'right' })
 
   const nombreArchivo = `Presupuesto_${presupuesto.id_presupuesto || 'nuevo'}_${hoy}.pdf`
-  if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-    window.open(doc.output('bloburl'), '_blank')
-  } else {
-    doc.save(nombreArchivo)
-  }
+  // también en mobile se descarga con doc.save: abrir el blob en otra pestaña
+  // hacía que el archivo quedara con un nombre aleatorio en vez de nombreArchivo
+  doc.save(nombreArchivo)
 }

@@ -409,12 +409,9 @@ autoTable(doc, {
     })
 
     const nombreArchivo = `Mas_Vendidos_${fechaDesde}_a_${fechaHasta}.pdf`
-    const esMobile = window.innerWidth <= 768
-    if (esMobile) {
-      window.open(doc.output('bloburl'), '_blank')
-    } else {
-      doc.save(nombreArchivo)
-    }
+    // también en mobile se descarga con doc.save: abrir el blob en otra pestaña
+    // hacía que el archivo quedara con un nombre aleatorio en vez de nombreArchivo
+    doc.save(nombreArchivo)
   }
 
   async function handleGenerar() {

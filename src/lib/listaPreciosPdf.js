@@ -546,11 +546,9 @@ export async function generarListaPreciosPdf(filas, tipoLista, fotos = []) {
   doc.text(`Página ${paginaActual}`, xDerecha, altoPagina - 9, { align: 'right' })
 
   const nombreArchivo = `Lista_Precios_${tipoLista}_${hoy}.pdf`
-  if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-    window.open(doc.output('bloburl'), '_blank')
-  } else {
-    doc.save(nombreArchivo)
-  }
+  // también en mobile se descarga con doc.save: abrir el blob en otra pestaña
+  // hacía que el archivo quedara con un nombre aleatorio en vez de nombreArchivo
+  doc.save(nombreArchivo)
 }
 
 // Obtiene los precios vigentes desde la BD y genera el PDF (para uso desde mobile).
