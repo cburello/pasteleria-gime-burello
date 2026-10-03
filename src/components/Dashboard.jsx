@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { generarListaPreciosDesdeBD } from '../lib/listaPreciosPdf'
+import { generarListaPreciosDesdeBD, cargarRubrosListaPrecios } from '../lib/listaPreciosPdf'
 import { useNotificaciones } from '../hooks/useNotificaciones'
 import { useEsMobile } from '../hooks/useEsMobile'
 import { ultimoBackup, tablasConCambios, dispararBackup } from '../lib/backup'
+import SelectorRubros from './SelectorRubros'
 
 const VEINTICUATRO_HS_MS = 24 * 60 * 60 * 1000
 
@@ -16,6 +17,8 @@ function Dashboard({ onAbrirPedido }) {
   const [resumenMes, setResumenMes] = useState({ cantidad: 0, totalFacturado: 0, totalCobrado: 0 })
   const [tipoListaPdf, setTipoListaPdf] = useState('ambos')
   const [generandoPdf, setGenerandoPdf] = useState(false)
+  const [rubros, setRubros] = useState([])
+  const [rubrosPdf, setRubrosPdf] = useState([])
   const [sinCostoVigente, setSinCostoVigente] = useState([])
   const [estadoBackup, setEstadoBackup] = useState(null)
   const [haciendoBackup, setHaciendoBackup] = useState(false)
@@ -23,7 +26,18 @@ function Dashboard({ onAbrirPedido }) {
   useEffect(() => {
     cargarDashboard()
     cargarEstadoBackup()
+    cargarRubros()
   }, [])
+
+  async function cargarRubros() {
+    try {
+      const lista = await cargarRubrosListaPrecios(supabase)
+      setRubros(lista)
+      setRubrosPdf(lista.map((r) => r.id))
+    } catch (e) {
+      mostrarToast(e.message, 'error')
+    }
+  }
 
   async function cargarEstadoBackup() {
     try {
@@ -176,9 +190,13 @@ function Dashboard({ onAbrirPedido }) {
   }
 
   async function generarListaPrecios() {
+    if (rubrosPdf.length === 0) {
+      mostrarToast('Seleccioná al menos un rubro para generar la lista de precios.', 'error')
+      return
+    }
     setGenerandoPdf(true)
     try {
-      await generarListaPreciosDesdeBD(supabase, tipoListaPdf)
+      await generarListaPreciosDesdeBD(supabase, tipoListaPdf, true, rubrosPdf)
     } catch (e) {
       mostrarToast('No se pudo generar la lista de precios: ' + e.message, 'error')
     }
@@ -312,6 +330,12 @@ function Dashboard({ onAbrirPedido }) {
             {generandoPdf ? 'Generando...' : '📄 Lista de precios'}
           </button>
         </div>
+        <SelectorRubros
+          rubros={rubros}
+          seleccionados={rubrosPdf}
+          onChange={setRubrosPdf}
+          style={{ marginTop: '8px' }}
+        />
 
         <h3 style={{ fontSize: '15px', margin: '20px 0 10px', color: '#4A2C2A' }}>
           Próximos a entregar (7 días)

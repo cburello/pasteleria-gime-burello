@@ -52,7 +52,8 @@ export async function prepararFotosProductos(urls, anchoMm, altoMm, maxFotos = 2
   }
 
   const resultados = []
-  for (const url of candidatos.slice(0, maxFotos)) {
+  for (const url of candidatos) {
+    if (resultados.length >= maxFotos) break
     try {
       const img = await cargarImagenElemento(url)
       resultados.push(recortarCover(img, anchoPx, altoPx))
@@ -61,6 +62,15 @@ export async function prepararFotosProductos(urls, anchoMm, altoMm, maxFotos = 2
     }
   }
   return resultados
+}
+
+// Fotos para el panel de la lista: se prefieren las de los productos emitidos
+// (rubros seleccionados); si ninguna sirve (sin imagen o fallan al cargar),
+// se usan las del resto del catálogo para no perder el diseño con foto.
+export async function prepararFotosLista(urlsEmitidos, urlsCatalogo, anchoMm, altoMm) {
+  const fotos = await prepararFotosProductos(urlsEmitidos, anchoMm, altoMm)
+  if (fotos.length > 0) return fotos
+  return prepararFotosProductos(urlsCatalogo, anchoMm, altoMm)
 }
 
 // Recorta del logo real (src/assets/logo.jpeg) solo el isotipo "Gime Burello"
@@ -157,11 +167,47 @@ async function registrarFuentesDeMarca(doc) {
 }
 
 // ============================================================
+// Rubros (productos.id_seccion -> secciones con nivel 'rubro')
+// ============================================================
+
+// Clave de la opción "Sin rubro" en el selector: agrupa los productos que no
+// tienen rubro asignado (o cuyo rubro ya no existe).
+export const ID_SIN_RUBRO = 'sin_rubro'
+
+// Devuelve los rubros para el selector de la lista de precios, en el mismo
+// orden que la carta web, con la opción "Sin rubro" siempre al final.
+// Cada rubro: { id: string, nombre, orden }
+export async function cargarRubrosListaPrecios(supabase) {
+  const { data, error } = await supabase
+    .from('secciones')
+    .select('id_seccion, nombre, orden')
+    .eq('nivel', 'rubro')
+    .order('orden')
+    .order('nombre')
+  if (error) throw new Error('Error al cargar rubros: ' + error.message)
+
+  return [
+    ...(data || []).map((r, i) => ({ id: String(r.id_seccion), nombre: r.nombre, orden: i })),
+    { id: ID_SIN_RUBRO, nombre: 'Sin rubro', orden: Number.MAX_SAFE_INTEGER },
+  ]
+}
+
+// Devuelve el rubro (de la lista de cargarRubrosListaPrecios) que le
+// corresponde a un producto según su id_seccion.
+export function rubroDeProducto(idSeccion, rubros) {
+  const clave = idSeccion === null || idSeccion === undefined ? ID_SIN_RUBRO : String(idSeccion)
+  return rubros.find((r) => r.id === clave) || rubros.find((r) => r.id === ID_SIN_RUBRO)
+}
+
+// ============================================================
 // Generación del PDF
 // ============================================================
 
-// Genera el PDF de lista de precios.
-// filas: [{ descripcion, minorista: number|null, mayorista: number|null }]
+// Genera el PDF de lista de precios, con un título por rubro y debajo los
+// productos que le pertenecen.
+// filas: [{ descripcion, minorista: number|null, mayorista: number|null,
+//           fecha_inicio, fecha_fin, rubro: string, rubroOrden: number }]
+//        Si una fila no trae rubro, se lista sin título de rubro.
 // tipoLista: 'ambos' | 'minorista' | 'mayorista'
 // fotos: data URLs ya recortadas (ver prepararFotosProductos). Si viene vacío
 //        o no se pasa, se usa el diseño clásico a todo el ancho, sin fotos.
@@ -346,15 +392,24 @@ export async function generarListaPreciosPdf(filas, tipoLista, fotos = []) {
     return dibujarHeaderTabla(dibujarTituloYVigencia(46))
   }
 
+  // ===== FILAS =====
+  // Se ordenan por rubro (orden de la carta) conservando, dentro de cada
+  // rubro, el orden en que llegan (alfabético por descripción).
+  const filasFiltradas = filas
+    .filter((f) => {
+      if (tipoLista === 'minorista') return f.minorista !== null
+      if (tipoLista === 'mayorista') return f.mayorista !== null
+      return f.minorista !== null || f.mayorista !== null
+    })
+    .map((f, i) => ({ ...f, _pos: i }))
+    .sort((a, b) => (a.rubroOrden ?? 0) - (b.rubroOrden ?? 0) || a._pos - b._pos)
+
+  if (filasFiltradas.length === 0) {
+    throw new Error('No hay productos con precio vigente en los rubros seleccionados.')
+  }
+
   // ===== PRIMERA PÁGINA =====
   let y = nuevaPagina(true)
-
-  // ===== FILAS =====
-  const filasFiltradas = filas.filter((f) => {
-    if (tipoLista === 'minorista') return f.minorista !== null
-    if (tipoLista === 'mayorista') return f.mayorista !== null
-    return f.minorista !== null || f.mayorista !== null
-  })
 
   let paginaActual = 1
   const limiteFila = usaFotos ? altoPagina - 25 : 272
@@ -372,23 +427,56 @@ export async function generarListaPreciosPdf(filas, tipoLista, fotos = []) {
     doc.text(`Página ${paginaActual}`, xDerecha, altoPagina - 9, { align: 'right' })
   }
 
-  filasFiltradas.forEach((f, idx) => {
-    if (y > limiteFila) {
-      dibujarPieDePagina()
-      paginaActual++
-      y = nuevaPagina(false)
+  // Título de rubro: nombre en mayúscula y negro, con una regla debajo.
+  // "continuacion" se usa cuando el rubro sigue en una página nueva.
+  const ALTO_TITULO_RUBRO = 9
+  function dibujarTituloRubro(nombre, continuacion) {
+    y += 1.5
+    doc.setFont('Poppins', 'bold')
+    doc.setFontSize(usaFotos ? 9 : 10.5)
+    doc.setTextColor(0, 0, 0)
+    const texto = nombre.toUpperCase() + (continuacion ? ' (CONT.)' : '')
+    doc.text(truncarTexto(texto, anchoContenido - 8), xContenido + 2, y)
+    doc.setDrawColor(0, 0, 0)
+    doc.setLineWidth(0.4)
+    doc.line(xContenido + 2, y + 1.8, xDerecha, y + 1.8)
+    y += ALTO_TITULO_RUBRO - 1.5
+  }
+
+  function saltarDePagina() {
+    dibujarPieDePagina()
+    paginaActual++
+    y = nuevaPagina(false)
+  }
+
+  let rubroActual
+  let idxEnRubro = 0
+
+  filasFiltradas.forEach((f) => {
+    const cambiaRubro = f.rubro && f.rubro !== rubroActual
+
+    if (cambiaRubro) {
+      // el título de rubro no queda solo al pie: necesita lugar para al menos una fila
+      if (y + ALTO_TITULO_RUBRO > limiteFila) saltarDePagina()
+      dibujarTituloRubro(f.rubro, false)
+      rubroActual = f.rubro
+      idxEnRubro = 0
+    } else if (y > limiteFila) {
+      saltarDePagina()
+      if (f.rubro) dibujarTituloRubro(f.rubro, true)
     }
 
-    if (idx % 2 === 1) {
+    if (idxEnRubro % 2 === 1) {
       doc.setFillColor(253, 248, 246)
       doc.rect(xContenido, y - 4.5, anchoContenido, 7.5, 'F')
     }
+    idxEnRubro++
 
     doc.setFont('Poppins', 'normal')
     doc.setFontSize(usaFotos ? 8.5 : 10)
-    doc.setTextColor(74, 44, 42)
+    doc.setTextColor(0, 0, 0)
     const anchoNombreDisponible = (mostrarVigencia ? xVigencia : xPrecio1) - xContenido - 8
-    const nombreMostrado = truncarTexto(f.descripcion, anchoNombreDisponible)
+    const nombreMostrado = truncarTexto(f.descripcion.toUpperCase(), anchoNombreDisponible)
     doc.text(nombreMostrado, xContenido + 4, y)
 
     // puntos de guía
@@ -419,7 +507,7 @@ export async function generarListaPreciosPdf(filas, tipoLista, fotos = []) {
     if (incluirMin) {
       const xCol = incluirMay ? xPrecio1 : xPrecio2
       if (f.minorista !== null) {
-        doc.setTextColor(74, 44, 42)
+        doc.setTextColor(0, 0, 0)
         doc.text(`$${fmt(f.minorista)}`, xCol + 14, y, { align: 'right' })
       } else {
         doc.setTextColor(200, 188, 184)
@@ -429,7 +517,7 @@ export async function generarListaPreciosPdf(filas, tipoLista, fotos = []) {
 
     if (incluirMay) {
       if (f.mayorista !== null) {
-        doc.setTextColor(90, 102, 191)
+        doc.setTextColor(0, 0, 0)
         doc.text(`$${fmt(f.mayorista)}`, xPrecio2 + 14, y, { align: 'right' })
       } else {
         doc.setTextColor(200, 188, 184)
@@ -467,12 +555,16 @@ export async function generarListaPreciosPdf(filas, tipoLista, fotos = []) {
 
 // Obtiene los precios vigentes desde la BD y genera el PDF (para uso desde mobile).
 // conFoto: si es false, genera el PDF clásico a todo el ancho sin buscar fotos.
-export async function generarListaPreciosDesdeBD(supabase, tipoLista, conFoto = true) {
+// rubrosSeleccionados: ids de rubro a emitir (ver cargarRubrosListaPrecios,
+//                      incluye ID_SIN_RUBRO); null emite todos.
+export async function generarListaPreciosDesdeBD(supabase, tipoLista, conFoto = true, rubrosSeleccionados = null) {
   const hoy = new Date().toLocaleString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 10)
+
+  const rubros = await cargarRubrosListaPrecios(supabase)
 
   const { data: productos } = await supabase
     .from('productos')
-    .select('id_producto, descripcion, imagen_url')
+    .select('id_producto, descripcion, imagen_url, id_seccion')
     .order('descripcion')
 
   const { data: precios } = await supabase
@@ -481,7 +573,11 @@ export async function generarListaPreciosDesdeBD(supabase, tipoLista, conFoto = 
     .lte('fecha_inicio', hoy)
     .gte('fecha_fin', hoy)
 
-  const filas = (productos || []).map((p) => {
+  const productosEmitidos = (productos || [])
+    .map((p) => ({ ...p, rubro: rubroDeProducto(p.id_seccion, rubros) }))
+    .filter((p) => !rubrosSeleccionados || rubrosSeleccionados.includes(p.rubro.id))
+
+  const filas = productosEmitidos.map((p) => {
     const pr = (precios || []).find((x) => x.id_producto === p.id_producto)
     return {
       descripcion: p.descripcion,
@@ -489,12 +585,19 @@ export async function generarListaPreciosDesdeBD(supabase, tipoLista, conFoto = 
       mayorista: pr?.precio_mayorista ? parseFloat(pr.precio_mayorista) : null,
       fecha_inicio: pr?.fecha_inicio || null,
       fecha_fin: pr?.fecha_fin || null,
+      rubro: p.rubro.nombre,
+      rubroOrden: p.rubro.orden,
     }
   })
 
   const anchoFotoPanel = 210 * 0.4
   const fotos = conFoto
-    ? await prepararFotosProductos((productos || []).map((p) => p.imagen_url), anchoFotoPanel, 297)
+    ? await prepararFotosLista(
+        productosEmitidos.map((p) => p.imagen_url),
+        (productos || []).map((p) => p.imagen_url),
+        anchoFotoPanel,
+        297
+      )
     : []
 
   await generarListaPreciosPdf(filas, tipoLista, fotos)

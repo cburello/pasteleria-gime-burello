@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { generarListaPreciosPdf, prepararFotosProductos } from '../lib/listaPreciosPdf'
+import {
+  generarListaPreciosPdf,
+  prepararFotosLista,
+  cargarRubrosListaPrecios,
+  rubroDeProducto,
+} from '../lib/listaPreciosPdf'
 import { useNotificaciones } from '../hooks/useNotificaciones'
+import SelectorRubros from './SelectorRubros'
 
 function fechaLocalHoy() {
   const hoy = new Date()
@@ -32,6 +38,8 @@ function PreciosMantenimiento() {
   const [tipoListaPdf, setTipoListaPdf] = useState('ambos')
   const [modoPdf, setModoPdf] = useState('foto')
   const [generandoPdf, setGenerandoPdf] = useState(false)
+  const [rubros, setRubros] = useState([])
+  const [rubrosPdf, setRubrosPdf] = useState(null)
 
   useEffect(() => {
     cargarDatos()
@@ -51,9 +59,21 @@ function PreciosMantenimiento() {
 
     const hoy = fechaLocalHoy()
 
+    let rubrosCargados
+    try {
+      rubrosCargados = await cargarRubrosListaPrecios(supabase)
+    } catch (e) {
+      setError(e.message)
+      setCargando(false)
+      return
+    }
+    setRubros(rubrosCargados)
+    // se conserva la selección del usuario al recargar; la primera vez van todos
+    setRubrosPdf((sel) => sel ?? rubrosCargados.map((r) => r.id))
+
     const { data: productos, error: errProductos } = await supabase
       .from('productos')
-      .select('id_producto, descripcion, imagen_url')
+      .select('id_producto, descripcion, imagen_url, id_seccion')
       .order('descripcion')
 
     if (errProductos) {
@@ -80,6 +100,7 @@ function PreciosMantenimiento() {
         id_producto: p.id_producto,
         descripcion: p.descripcion,
         imagen_url: p.imagen_url || null,
+        rubro: rubroDeProducto(p.id_seccion, rubrosCargados),
         precioVigente: precioVigente || null,
         minoristaActual: precioVigente ? parseFloat(precioVigente.precio_venta) : null,
         mayoristaActual: precioVigente?.precio_mayorista ? parseFloat(precioVigente.precio_mayorista) : null,
@@ -226,9 +247,14 @@ function PreciosMantenimiento() {
   }
 
   async function generarPdf() {
+    if (!rubrosPdf || rubrosPdf.length === 0) {
+      mostrarToast('Seleccioná al menos un rubro para generar la lista de precios.', 'error')
+      return
+    }
     setGenerandoPdf(true)
     try {
-      const filasPdf = filas.map((f) => ({
+      const filasEmitidas = filas.filter((f) => rubrosPdf.includes(f.rubro.id))
+      const filasPdf = filasEmitidas.map((f) => ({
         descripcion: f.descripcion,
         minorista: f.minoristaNuevo !== '' && !isNaN(parseFloat(f.minoristaNuevo))
           ? parseFloat(f.minoristaNuevo)
@@ -238,10 +264,17 @@ function PreciosMantenimiento() {
           : null,
         fecha_inicio: f.precioVigente?.fecha_inicio || null,
         fecha_fin: f.precioVigente?.fecha_fin || null,
+        rubro: f.rubro.nombre,
+        rubroOrden: f.rubro.orden,
       }))
       const anchoFotoPanel = 210 * 0.4
       const fotos = modoPdf === 'foto'
-        ? await prepararFotosProductos(filas.map((f) => f.imagen_url), anchoFotoPanel, 297)
+        ? await prepararFotosLista(
+          filasEmitidas.map((f) => f.imagen_url),
+          filas.map((f) => f.imagen_url),
+          anchoFotoPanel,
+          297
+        )
         : []
       await generarListaPreciosPdf(filasPdf, tipoListaPdf, fotos)
     } catch (e) {
@@ -304,6 +337,7 @@ function PreciosMantenimiento() {
             <option value="foto">PDF con Foto</option>
             <option value="normal">PDF Normal</option>
           </select>
+          <SelectorRubros rubros={rubros} seleccionados={rubrosPdf || []} onChange={setRubrosPdf} />
           <button type="button" className="btn-secundario" onClick={generarPdf} disabled={generandoPdf}>
             {generandoPdf ? 'Generando...' : '📄 Generar PDF'}
           </button>

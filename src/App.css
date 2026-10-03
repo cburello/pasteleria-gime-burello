@@ -2403,3 +2403,74 @@ margin-top: 16px;
 .btn-estrella:not(.activa) {
   color: #D8C6C1;
 }
+/* ===== Selector de rubros (lista de precios) ===== */
+.selector-rubros {
+  position: relative;
+}
+.selector-rubros-boton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 150px;
+  padding: 9px 10px;
+  border: 1px solid #E8D5CF;
+  border-radius: 8px;
+  background: #fff;
+  color: #4A2C2A;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.selector-rubros-flecha {
+  font-size: 9px;
+  color: #8A6A66;
+}
+.selector-rubros-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px 0;
+  background: #fff;
+  border: 1px solid #E8D5CF;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(74, 44, 42, 0.15);
+}
+.selector-rubros-opcion {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 8px;
+  padding: 6px 12px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  color: #4A2C2A;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.selector-rubros-opcion:hover {
+  background: #FDF8F6;
+}
+/* el selector puede quedar dentro de un .formulario, cuyas reglas de input
+   (flex: 1, min-width, padding) deforman los checks: se neutralizan acá */
+.selector-rubros .selector-rubros-opcion input[type='checkbox'] {
+  flex: none;
+  width: auto;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  accent-color: #E8765C;
+}
+.selector-rubros-todos {
+  font-weight: 600;
+  border-bottom: 1px solid #F0E4E0;
+  margin-bottom: 4px;
+}
